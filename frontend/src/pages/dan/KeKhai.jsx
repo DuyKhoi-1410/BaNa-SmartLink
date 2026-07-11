@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FileText, Calendar, Clock, CheckCircle2, AlertCircle, Zap, CalendarClock, X, Users, Heart, Shield, Baby, Briefcase, Send, Info, Upload, ImagePlus, Trash2, ArrowLeft, RotateCcw, Pencil, ChevronRight, Loader2 } from 'lucide-react'
 import { api } from '../../lib/api'
+import Toast from '../../components/Toast'
 
 const tinhSoNgay = (ngayDong) => {
   const dong = new Date(ngayDong)
@@ -108,7 +109,6 @@ export default function KeKhai() {
   const [minhChungCT, setMinhChungCT] = useState({})
   const [loiCT, setLoiCT] = useState({})
   const [dangNop, setDangNop] = useState(false)
-  const [moXacNhanReset, setMoXacNhanReset] = useState(false)
   const [duLieuDaNop, setDuLieuDaNop] = useState({})
   const [dangXemLai, setDangXemLai] = useState(false)
   const [chiXem, setChiXem] = useState(false)
@@ -119,6 +119,7 @@ export default function KeKhai() {
   const [dangChot, setDangChot] = useState({})
   const [duLieuGoc, setDuLieuGoc] = useState({})
   const [moXacNhanNop, setMoXacNhanNop] = useState(false)
+  const [hienToast, setHienToast] = useState(false)
   const [dangKeKhaiLai, setDangKeKhaiLai] = useState(false)
   const [danhSachCTCanLai, setDanhSachCTCanLai] = useState([])
   const fileInputRefs = useRef({})
@@ -174,23 +175,6 @@ export default function KeKhai() {
   const tongSoBuoc = DANH_SACH_BUOC.length
   const laBuocCuoi = buocHienTai === tongSoBuoc - 1
 
-  const xuLyReset = () => {
-    setDanhSachDot(danhSachDotGoc.map(dot => ({ ...dot, trangThai: 'chua-ke-khai' })))
-    setDuLieuDaNop({})
-    setDuLieuCT({})
-    setMinhChungCT({})
-    setLoiCT({})
-    setMoXacNhanReset(false)
-    setMoPopup(false)
-    setDangXemLai(false)
-    setChiXem(false)
-    setDangKeKhaiLai(false)
-    setDanhSachCTCanLai([])
-    setTrangThaiCT({})
-    setBuocHienTai(0)
-    setDaChot({})
-    setDangChot({})
-  }
 
   const layDuLieuGanNhat = () => {
     const cacDotDaNop = Object.keys(duLieuDaNop)
@@ -545,6 +529,7 @@ export default function KeKhai() {
       setTrangThaiCT({})
       setThongBaoLoi(null)
       setBuocHienTai(0)
+      setHienToast(true)
       window.scrollTo({ top: 0 })
     } catch (err) {
       console.error('Loi nop ke khai:', err)
@@ -590,15 +575,6 @@ export default function KeKhai() {
             </div>
             Kê Khai Dữ Liệu
           </h1>
-          <button
-            onClick={() => setMoXacNhanReset(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-red-600 bg-red-50 border border-red-200
-              hover:bg-red-100 hover:-translate-y-0.5 hover:shadow-md
-              transition-all duration-300 active:scale-[0.97]"
-          >
-            <RotateCcw size={16} />
-            Reset dữ liệu
-          </button>
         </div>
         <p className="text-slate-500 mt-2 ml-[52px]">Danh sách các đợt kê khai dữ liệu hộ gia đình</p>
 
@@ -1276,40 +1252,6 @@ export default function KeKhai() {
     <>
       {moPopup && dotDangChon ? manHinhKeKhai : manHinhDanhSach}
 
-      {/* Popup xác nhận reset */}
-      {moXacNhanReset && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setMoXacNhanReset(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm z-10 p-6 text-center">
-            <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AlertCircle size={28} className="text-red-500" />
-            </div>
-            <h3 className="text-lg font-bold text-slate-800 mb-2">Xác nhận reset dữ liệu</h3>
-            <p className="text-sm text-slate-500 mb-6">
-              Toàn bộ dữ liệu kê khai của dân sẽ bị <strong className="text-red-600">xoá sạch</strong>. Hành động này không thể hoàn tác.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setMoXacNhanReset(false)}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-600 bg-slate-100 rounded-xl
-                  hover:bg-slate-200 transition-all duration-300 active:scale-[0.97]"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={xuLyReset}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-red-500 rounded-xl
-                  hover:bg-red-400 hover:shadow-lg hover:shadow-red-500/25
-                  transition-all duration-300 active:scale-[0.97]"
-              >
-                <RotateCcw size={16} />
-                Reset
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Popup xác nhận nộp */}
       {moXacNhanNop && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -1380,6 +1322,12 @@ export default function KeKhai() {
       )}
 
       {/* Toast thông báo lỗi */}
+      <Toast
+        hien={hienToast}
+        noiDung="Kê khai thành công!"
+        dongToast={() => setHienToast(false)}
+      />
+
       {thongBaoLoi && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] sm:w-[420px] animate-[slideDown_0.4s_cubic-bezier(0.16,1,0.3,1)]">
           <div className="relative rounded-2xl overflow-hidden group">
