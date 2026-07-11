@@ -1,0 +1,42 @@
+Cấu trúc dự án:
+
+- Quản lý dùng npm cho cả FE BE
+- Hiện theo tình hình code tôi đọc có vẻ giống react vì đa số chỉ toàn là FE
+- Tôi muốn bạn là dồn toàn bộ kiến trúc này vào 1 folder frontend.
+Tôi muốn tạo thêm 1 folder backend (sử dụng expressJS)
+Còn FE bạn xem xét kiến trúc React đúng không, nếu đúng thì không cần đổi. Còn nếu không phải thì đổi kiến trúc thành FE
+Khi đưa vaoif folder FE giữu kiến trúc giao diện hiện tại cho đúng (đúng với web cả mobile)
+
+FE cổng 3000, BE cổng 3636
+Kiến trúc BE:
+- 1 folder src
+- bên trong folder src có 1 folder api, 1 folder services, 1 folder reposities, 1 folder schema (đây là dto cũng như schema class)
+
+Hiện code đang bị loạn lạc giữa logic và giao diện nên cần đọc kĩ để phân tách.
+Để đảm bảo an toàn backup.
+Tạo 2 folder cho FE BE, copy đống hiện tại đưa vào FE và tái cấu trúc thành reaact. Còn code ngoài để đó không đụng
+Lấy các env sắp xếp tương ứng vào cho 2 folder D:\Duy Khoi\DUETECH AI\Ba Na SmartLink\.env (folder BE chứa env database, lớp repositories sẽ là lớp connect đến db)
+- npm install agentation -D cài này vào FE
+===================================================================
+Toàn bộ memoryu nếu cần lưu hết vào D:\Duy Khoi\DUETECH AI\Ba Na SmartLink\.claude đây thay vì ổ C để đúng tiến trình dự án
+
+=============================================================
+Mục tiêu:
+- D:\Duy Khoi\DUETECH AI\Ba Na SmartLink\docs
+
+
+Thứ tự làm:
+- Tạo fodler BE FE
+- Copy toàn bộ vào folder FE. Kiêmt tra vấn đề giao diện và logic. Nếu có vấn đề gọi là xử lý logic thì cầm qua bên BE
+- Thiết kế FE trước rồi dán npm install agentation -D để tôi dùng agentation để feedback lỗi hay gì nếu có
+- Thiết BE express như đã nói, port như đã nói
+- Dựa vào chuẩn và thiết kế Db theo dự án, sau đó chia aghent song song
+- Quy trình: FE giao diện thaoi tác xác thực đúng gì đó thôi, ko được là xử lý logic -> middleware -> BE (api -> services -> repositories nếu cần liên quan db -> db).
+- Thiết kế db liên quan vào trong folderer schema và chứa dto (nơi request, responese các nơi)
+api theo /api/v1., có /health.
+
+Thiết kế theo đúng yêu cầu người dùng (web lẫn mobile, ưu tiên web xong đã, cũng như sau đó là web trên điện thoại)
+Sau khi xong tiến hành test kiểm tra api cũng như connect db thì làm tiếp như sau:
+- Tạo seed db các dữ liệu liên quan vào trong db (tầm 5-10 dữ liệu mỗi tables)
+- lập ra mỗi api 2 3 test liên quan và test để lấy db (thiết kế api đủ cho FE cũng như tự thiết kế desigin)
+- Test hết toàn api, tự tets curl từng cái một (chứa gắn dùng JWT, tạm thời pass qua auth để tiến hành api chuẩn hết)
