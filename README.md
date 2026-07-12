@@ -1,16 +1,81 @@
-# React + Vite
+# Ba Na SmartLink
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Nền tảng web hỗ trợ quy trình kê khai & báo cáo từ dân → thôn → xã cho xã Bà Nà (10 thôn, ~25.000 dân).
 
-Currently, two official plugins are available:
+## 3 loại người dùng
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Dân (chủ hộ):** Kê khai dữ liệu hộ gia đình theo quý. Rất yếu công nghệ → giao diện phải cực kỳ đơn giản.
+- **Cán bộ thôn:** Duyệt dữ liệu dân, nhập thủ công CT của thôn, nộp lên xã.
+- **Cán bộ xã:** Tạo đợt kê khai, theo dõi tiến độ 10 thôn, tổng hợp báo cáo, xuất file.
 
-## React Compiler
+## Luồng chính
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```
+Xã tạo đợt kê khai → Thông báo qua web + Zalo OA
+→ Dân kê khai (lần sau: xác nhận giữ nguyên hoặc sửa)
+→ Thôn duyệt + nhập thủ công CT của thôn
+→ Xã tổng hợp 10 thôn → Xuất báo cáo Excel/Word/PDF + biểu đồ
+```
 
-## Expanding the Oxlint configuration
+## Chỉ tiêu kê khai (CT01-CT14)
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+- Hệ thống tự tính: CT01
+- Dân nhập: CT02, CT03, CT04, CT05, CT06, CT07, CT08, CT10, CT11
+- Cán bộ thôn nhập: CT09, CT12, CT13, CT14
+
+## Tính năng chính
+
+- Kê khai định kỳ (theo quý) + kê khai đột xuất (xã tạo nhiệm vụ bất kỳ lúc nào)
+- Lần kê khai sau: giữ dữ liệu lần trước, dân xác nhận hoặc sửa
+- AI kiểm tra dữ liệu bất thường, thiếu, sai định dạng
+- Dashboard tiến độ (thôn xem dân, xã xem thôn)
+- Thông báo nhắc việc qua web + Zalo OA
+- Chatbot AI (RAG) cho thôn và xã tra cứu dữ liệu
+- Xuất báo cáo Excel, Word, PDF, biểu đồ
+- Kho dữ liệu số dùng chung tích lũy qua các quý
+- Quản lý danh sách hộ dân (thêm hộ mới, đánh dấu hộ rời xã, cập nhật thông tin)
+
+## Công nghệ
+
+- Frontend: React + Tailwind CSS
+- Backend: Supabase
+- AI: RAG chatbot
+- Thông báo: Zalo OA API
+
+## Cách chạy
+
+```bash
+npm install
+npm run dev
+```
+
+## Cấu trúc thư mục
+
+```
+src/
+  pages/       → các trang
+  components/  → phần dùng chung
+  lib/         → kết nối Supabase, API
+  hooks/       → custom hooks
+```
+
+## Tài liệu chi tiết
+
+Đọc các file trong docs/ trước khi code:
+- docs/user_profile.md — Thông tin người dùng, cách giao tiếp
+- docs/project_overview.md — Thực trạng, giải pháp, đối tượng, kết quả đầu ra
+- docs/project_data_flow.md — Luồng dân→thôn→xã, bảng CT01-CT14
+- docs/project_criteria.md — 7 tiêu chí chấm điểm cuộc thi
+- docs/design.md — Thiết kế giao diện: màu sắc, bố cục, danh sách trang, nguyên tắc UX, components dùng chung
+
+## Quy tắc code
+
+- Tên biến, tên hàm viết tiếng Việt không dấu (VD: soHoDan, nopBaoCao)
+- Component viết PascalCase (VD: TrangChu.jsx, BieuMau.jsx)
+- Giao diện đẹp mắt NHƯNG dễ dùng cho người yếu công nghệ
+- Responsive (hỗ trợ điện thoại)
+- Không thêm tính năng ngoài yêu cầu
+
+## Quy trình làm việc
+
+- Trước khi code: nêu lại cách hiểu → nêu plan → Khôi đồng ý → mới code

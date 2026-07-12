@@ -1,81 +1,65 @@
-# Ba Na SmartLink
+# CLAUDE.md
 
-Nền tảng web hỗ trợ quy trình kê khai & báo cáo từ dân → thôn → xã cho xã Bà Nà (10 thôn, ~25.000 dân).
+Các nguyên tắc hành vi giúp giảm thiểu những lỗi code thường gặp của LLM. Có thể gộp chung với các hướng dẫn cụ thể của dự án khi cần.
 
-## 3 loại người dùng
+**Sự đánh đổi:** Các nguyên tắc này thiên về sự cẩn trọng hơn là tốc độ. Đối với các tác vụ đơn giản, hãy tự cân nhắc.
 
-- **Dân (chủ hộ):** Kê khai dữ liệu hộ gia đình theo quý. Rất yếu công nghệ → giao diện phải cực kỳ đơn giản.
-- **Cán bộ thôn:** Duyệt dữ liệu dân, nhập thủ công CT của thôn, nộp lên xã.
-- **Cán bộ xã:** Tạo đợt kê khai, theo dõi tiến độ 10 thôn, tổng hợp báo cáo, xuất file.
+## 1. Suy Nghĩ Trước Khi Code
 
-## Luồng chính
+**Không tự đưa ra giả định. Không giấu giếm sự bối rối. Trình bày rõ các sự đánh đổi.**
 
+Trước khi triển khai:
+- Trình bày các giả định của bạn một cách rõ ràng. Nếu không chắc chắn, hãy hỏi.
+- Nếu có nhiều cách hiểu khác nhau, hãy trình bày chúng - đừng âm thầm tự chọn một cách.
+- Nếu có một cách tiếp cận đơn giản hơn, hãy nói ra. Phản biện lại khi có lý do chính đáng.
+- Nếu có gì đó không rõ ràng, hãy dừng lại. Chỉ rõ điều gì gây khó hiểu. Hãy hỏi.
+
+## 2. Ưu Tiên Sự Tối Giản
+
+**Lượng code tối thiểu đủ để giải quyết vấn đề. Không viết code mang tính suy đoán/phòng hờ.**
+
+- Không có tính năng nào ngoài những gì được yêu cầu.
+- Không trừu tượng hóa (abstractions) cho các đoạn code chỉ dùng một lần.
+- Không thêm sự "linh hoạt" hay "có thể cấu hình" nếu không được yêu cầu.
+- Không xử lý lỗi cho các kịch bản bất khả thi.
+- Nếu bạn viết 200 dòng mà thực tế chỉ cần 50 dòng, hãy viết lại.
+
+Hãy tự hỏi: "Một kỹ sư Senior có cho rằng điều này là quá phức tạp không?" Nếu có, hãy đơn giản hóa nó.
+
+## 3. Chỉnh Sửa Như Phẫu Thuật
+
+**Chỉ chạm vào những gì bắt buộc phải chạm. Chỉ dọn dẹp đống lộn xộn do chính bạn tạo ra.**
+
+Khi chỉnh sửa code có sẵn:
+- Không "cải thiện" các đoạn code, comment hoặc định dạng xung quanh.
+- Không tái cấu trúc (refactor) những thứ không bị hỏng.
+- Phải khớp với văn phong (style) hiện có, ngay cả khi bạn có thói quen viết khác.
+- Nếu bạn nhận thấy có dead code (code không bao giờ được chạy) không liên quan, hãy nhắc đến nó - đừng xóa nó.
+
+Khi những thay đổi của bạn tạo ra các thành phần mồ côi:
+- Hãy xóa các imports/biến/hàm mà do NHỮNG THAY ĐỔI CỦA BẠN khiến chúng không còn được sử dụng nữa.
+- Không xóa các dead code đã tồn tại từ trước trừ khi được yêu cầu.
+
+Bài kiểm tra: Mọi dòng code bị thay đổi đều phải liên kết trực tiếp đến yêu cầu của người dùng.
+
+## 4. Hành Động Hướng Tới Mục Tiêu
+
+**Xác định các tiêu chí thành công. Lặp lại cho đến khi được xác minh.**
+
+Chuyển đổi các tác vụ thành các mục tiêu có thể xác minh được:
+- "Thêm validation" → "Viết test cho các đầu vào không hợp lệ, sau đó làm cho chúng pass"
+- "Sửa lỗi" → "Viết một test để tái tạo lại lỗi đó, sau đó làm cho nó pass"
+- "Refactor X" → "Đảm bảo các test đều pass cả trước và sau khi làm"
+
+Đối với các tác vụ gồm nhiều bước, hãy nêu ra một kế hoạch tóm tắt:
 ```
-Xã tạo đợt kê khai → Thông báo qua web + Zalo OA
-→ Dân kê khai (lần sau: xác nhận giữ nguyên hoặc sửa)
-→ Thôn duyệt + nhập thủ công CT của thôn
-→ Xã tổng hợp 10 thôn → Xuất báo cáo Excel/Word/PDF + biểu đồ
+1. [Bước] → xác minh: [kiểm tra]
+2. [Bước] → xác minh: [kiểm tra]
+3. [Bước] → xác minh: [kiểm tra]
 ```
 
-## Chỉ tiêu kê khai (CT01-CT14)
+Tiêu chí thành công mạnh mẽ cho phép bạn lặp lại một cách độc lập. Tiêu chí yếu ("hãy làm cho nó chạy được") sẽ đòi hỏi phải làm rõ liên tục.
 
-- Hệ thống tự tính: CT01
-- Dân nhập: CT02, CT03, CT04, CT05, CT06, CT07, CT08, CT10, CT11
-- Cán bộ thôn nhập: CT09, CT12, CT13, CT14
+---
 
-## Tính năng chính
-
-- Kê khai định kỳ (theo quý) + kê khai đột xuất (xã tạo nhiệm vụ bất kỳ lúc nào)
-- Lần kê khai sau: giữ dữ liệu lần trước, dân xác nhận hoặc sửa
-- AI kiểm tra dữ liệu bất thường, thiếu, sai định dạng
-- Dashboard tiến độ (thôn xem dân, xã xem thôn)
-- Thông báo nhắc việc qua web + Zalo OA
-- Chatbot AI (RAG) cho thôn và xã tra cứu dữ liệu
-- Xuất báo cáo Excel, Word, PDF, biểu đồ
-- Kho dữ liệu số dùng chung tích lũy qua các quý
-- Quản lý danh sách hộ dân (thêm hộ mới, đánh dấu hộ rời xã, cập nhật thông tin)
-
-## Công nghệ
-
-- Frontend: React + Tailwind CSS
-- Backend: Supabase
-- AI: RAG chatbot
-- Thông báo: Zalo OA API
-
-## Cách chạy
-
-```bash
-npm install
-npm run dev
-```
-
-## Cấu trúc thư mục
-
-```
-src/
-  pages/       → các trang
-  components/  → phần dùng chung
-  lib/         → kết nối Supabase, API
-  hooks/       → custom hooks
-```
-
-## Tài liệu chi tiết
-
-Đọc các file trong docs/ trước khi code:
-- docs/user_profile.md — Thông tin người dùng, cách giao tiếp
-- docs/project_overview.md — Thực trạng, giải pháp, đối tượng, kết quả đầu ra
-- docs/project_data_flow.md — Luồng dân→thôn→xã, bảng CT01-CT14
-- docs/project_criteria.md — 7 tiêu chí chấm điểm cuộc thi
-- docs/design.md — Thiết kế giao diện: màu sắc, bố cục, danh sách trang, nguyên tắc UX, components dùng chung
-
-## Quy tắc code
-
-- Tên biến, tên hàm viết tiếng Việt không dấu (VD: soHoDan, nopBaoCao)
-- Component viết PascalCase (VD: TrangChu.jsx, BieuMau.jsx)
-- Giao diện đẹp mắt NHƯNG dễ dùng cho người yếu công nghệ
-- Responsive (hỗ trợ điện thoại)
-- Không thêm tính năng ngoài yêu cầu
-
-## Quy trình làm việc
-
-- Trước khi code: nêu lại cách hiểu → nêu plan → Khôi đồng ý → mới code
+**Các nguyên tắc này đang phát huy hiệu quả nếu:** có ít thay đổi không cần thiết hơn trong các bản diff, ít phải viết lại code hơn do làm quá phức tạp vấn đề, và các câu hỏi làm rõ được đặt ra trước khi tiến hành code chứ không phải sau khi đã mắc lỗi.

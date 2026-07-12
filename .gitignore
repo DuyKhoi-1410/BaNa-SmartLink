@@ -34,3 +34,6 @@ backend/uploads/
 *.njsproj
 *.sln
 *.sw?
+
+.ask/
+.claude/

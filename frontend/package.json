@@ -7,7 +7,8 @@
     "dev": "vite --port 3000",
     "build": "vite build",
     "preview": "vite preview --port 3000",
-    "lint": "oxlint"
+    "lint": "oxlint",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.2",
@@ -24,6 +25,7 @@
     "@vitejs/plugin-react": "^6.0.3",
     "agentation": "*",
     "oxlint": "^1.71.0",
+    "typescript": "^7.0.2",
     "vite": "^8.1.1"
   }
 }
