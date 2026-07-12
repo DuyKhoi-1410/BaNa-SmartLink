@@ -2,80 +2,97 @@
 
 Nền tảng web hỗ trợ quy trình kê khai & báo cáo từ dân → thôn → xã cho xã Bà Nà (10 thôn, ~25.000 dân).
 
-## 3 loại người dùng
+## Giới thiệu
 
-- **Dân (chủ hộ):** Kê khai dữ liệu hộ gia đình theo quý. Rất yếu công nghệ → giao diện phải cực kỳ đơn giản.
-- **Cán bộ thôn:** Duyệt dữ liệu dân, nhập thủ công CT của thôn, nộp lên xã.
-- **Cán bộ xã:** Tạo đợt kê khai, theo dõi tiến độ 10 thôn, tổng hợp báo cáo, xuất file.
+Ba Na SmartLink số hóa quy trình thu thập dữ liệu dân cư theo 14 chỉ tiêu (CT01-CT14), thay thế giấy tờ thủ công bằng hệ thống web với 3 vai trò:
 
-## Luồng chính
+- **Dân (chủ hộ):** Kê khai dữ liệu hộ gia đình theo quý. Giao diện đơn giản, thân thiện cho người yếu công nghệ.
+- **Cán bộ thôn:** Duyệt kê khai của dân, nhập chỉ tiêu cấp thôn (CT09, CT12-CT14), nộp báo cáo lên xã.
+- **Cán bộ xã:** Tạo đợt kê khai, theo dõi tiến độ 10 thôn, tổng hợp báo cáo, quản lý hộ dân.
+
+## Luồng hoạt động
 
 ```
-Xã tạo đợt kê khai → Thông báo qua web + Zalo OA
-→ Dân kê khai (lần sau: xác nhận giữ nguyên hoặc sửa)
-→ Thôn duyệt + nhập thủ công CT của thôn
-→ Xã tổng hợp 10 thôn → Xuất báo cáo Excel/Word/PDF + biểu đồ
+Xã tạo đợt kê khai → Thông báo đến dân + thôn
+→ Dân kê khai 9 chỉ tiêu (CT02-CT08, CT10, CT11) + upload minh chứng
+→ Thôn duyệt kê khai dân + nhập 4 chỉ tiêu thôn (CT09, CT12-CT14)
+→ Thôn nộp báo cáo lên xã
+→ Xã tổng hợp 10 thôn → Xuất báo cáo
 ```
-
-## Chỉ tiêu kê khai (CT01-CT14)
-
-- Hệ thống tự tính: CT01
-- Dân nhập: CT02, CT03, CT04, CT05, CT06, CT07, CT08, CT10, CT11
-- Cán bộ thôn nhập: CT09, CT12, CT13, CT14
 
 ## Tính năng chính
 
-- Kê khai định kỳ (theo quý) + kê khai đột xuất (xã tạo nhiệm vụ bất kỳ lúc nào)
-- Lần kê khai sau: giữ dữ liệu lần trước, dân xác nhận hoặc sửa
-- AI kiểm tra dữ liệu bất thường, thiếu, sai định dạng
-- Dashboard tiến độ (thôn xem dân, xã xem thôn)
-- Thông báo nhắc việc qua web + Zalo OA
-- Chatbot AI (RAG) cho thôn và xã tra cứu dữ liệu
-- Xuất báo cáo Excel, Word, PDF, biểu đồ
-- Kho dữ liệu số dùng chung tích lũy qua các quý
-- Quản lý danh sách hộ dân (thêm hộ mới, đánh dấu hộ rời xã, cập nhật thông tin)
+- Kê khai định kỳ (theo quý) và đột xuất (xã tạo bất kỳ lúc nào)
+- Giữ dữ liệu lần kê khai trước, dân chỉ cần xác nhận hoặc sửa
+- Upload minh chứng (ảnh giấy tờ) cho từng chỉ tiêu
+- Dashboard tiến độ theo thời gian thực (thôn xem dân, xã xem thôn)
+- Thông báo nhắc việc tự động
+- Quản lý hộ dân & nhân khẩu
+- Xuất báo cáo tổng hợp
 
 ## Công nghệ
 
-- Frontend: React + Tailwind CSS
-- Backend: Supabase
-- AI: RAG chatbot
-- Thông báo: Zalo OA API
+| Thành phần | Công nghệ |
+|------------|-----------|
+| Frontend | React 19, TypeScript, Tailwind CSS v4, Vite 8, React Router 7 |
+| Backend | Express.js 5, TypeScript, Node.js |
+| Database | PostgreSQL (Supabase) |
+| Xác thực | JWT (access + refresh token), bcrypt |
+| Lưu trữ file | Supabase Storage + Local filesystem |
 
-## Cách chạy
+## Hướng dẫn cài đặt & chạy thử
+
+### Yêu cầu
+
+- Node.js >= 18
+- PostgreSQL database (hoặc tài khoản Supabase)
+
+### Bước 1: Cài đặt
 
 ```bash
-npm install
-npm run dev
+# Clone repo
+git clone https://github.com/DuyKhoi-1410/BaNa-SmartLink.git
+cd BaNa-SmartLink
+
+# Cài dependencies
+cd backend && npm install
+cd ../frontend && npm install
 ```
 
-## Cấu trúc thư mục
+### Bước 2: Cấu hình
 
+Tạo file `.env` cho backend theo mẫu `backend/.env.example`
+
+### Bước 3: Khởi tạo database
+
+```bash
+cd backend
+npm run migrate   # Tạo bảng
+npm run seed      # Tạo dữ liệu demo
 ```
-src/
-  pages/       → các trang
-  components/  → phần dùng chung
-  lib/         → kết nối Supabase, API
-  hooks/       → custom hooks
+
+### Bước 4: Chạy ứng dụng
+
+```bash
+# Terminal 1 - Backend
+cd backend && npm run dev
+
+# Terminal 2 - Frontend
+cd frontend && npm run dev
 ```
 
-## Tài liệu chi tiết
+Truy cập: **http://localhost:3000**
 
-Đọc các file trong docs/ trước khi code:
-- docs/user_profile.md — Thông tin người dùng, cách giao tiếp
-- docs/project_overview.md — Thực trạng, giải pháp, đối tượng, kết quả đầu ra
-- docs/project_data_flow.md — Luồng dân→thôn→xã, bảng CT01-CT14
-- docs/project_criteria.md — 7 tiêu chí chấm điểm cuộc thi
-- docs/design.md — Thiết kế giao diện: màu sắc, bố cục, danh sách trang, nguyên tắc UX, components dùng chung
+## Tài khoản demo
 
-## Quy tắc code
+| Vai trò | Đăng nhập | Mật khẩu |
+|---------|-----------|----------|
+| Cán bộ xã | `canboxa` | `demo123` |
+| Cán bộ thôn | `canbothon1` đến `canbothon10` | `demo123` |
+| Người dân | CCCD `048025000001` đến `048025000030` | `demo123` |
 
-- Tên biến, tên hàm viết tiếng Việt không dấu (VD: soHoDan, nopBaoCao)
-- Component viết PascalCase (VD: TrangChu.jsx, BieuMau.jsx)
-- Giao diện đẹp mắt NHƯNG dễ dùng cho người yếu công nghệ
-- Responsive (hỗ trợ điện thoại)
-- Không thêm tính năng ngoài yêu cầu
+> Mỗi thôn có 3 hộ dân. Thôn 1: CCCD 001-003, Thôn 2: 004-006, ...
 
-## Quy trình làm việc
+## Tài liệu
 
-- Trước khi code: nêu lại cách hiểu → nêu plan → Khôi đồng ý → mới code
+Chi tiết về thiết kế, luồng dữ liệu và kiến trúc xem trong thư mục `docs/`
