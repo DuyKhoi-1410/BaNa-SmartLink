@@ -10,15 +10,15 @@ const MK_DAN = process.env.SEED_MAT_KHAU_DAN || 'danmat1'
 // Du lieu theo file USER DEMO.xlsx
 const CAN_BO_THON = [
   { ten_dn: 'canbothon1', ho_ten: 'Tran Huu Duc', mk: 'demo123' },
-  { ten_dn: 'canbothon2', ho_ten: 'Le Quang Vinh', mk: 'demo124' },
-  { ten_dn: 'canbothon3', ho_ten: 'Pham Minh Tuan', mk: 'demo125' },
-  { ten_dn: 'canbothon4', ho_ten: 'Vo Dinh Hoang', mk: 'demo126' },
-  { ten_dn: 'canbothon5', ho_ten: 'Nguyen Van Tai', mk: 'demo127' },
-  { ten_dn: 'canbothon6', ho_ten: 'Dang Quoc Bao', mk: 'demo128' },
-  { ten_dn: 'canbothon7', ho_ten: 'Huynh Ngoc Son', mk: 'demo129' },
-  { ten_dn: 'canbothon8', ho_ten: 'Le Thanh Phong', mk: 'demo130' },
-  { ten_dn: 'canbothon9', ho_ten: 'Tran Quang Huy', mk: 'demo131' },
-  { ten_dn: 'canbothon10', ho_ten: 'Pham Duc Thinh', mk: 'demo132' },
+  { ten_dn: 'canbothon2', ho_ten: 'Le Quang Vinh', mk: 'demo123' },
+  { ten_dn: 'canbothon3', ho_ten: 'Pham Minh Tuan', mk: 'demo123' },
+  { ten_dn: 'canbothon4', ho_ten: 'Vo Dinh Hoang', mk: 'demo123' },
+  { ten_dn: 'canbothon5', ho_ten: 'Nguyen Van Tai', mk: 'demo123' },
+  { ten_dn: 'canbothon6', ho_ten: 'Dang Quoc Bao', mk: 'demo123' },
+  { ten_dn: 'canbothon7', ho_ten: 'Huynh Ngoc Son', mk: 'demo123' },
+  { ten_dn: 'canbothon8', ho_ten: 'Le Thanh Phong', mk: 'demo123' },
+  { ten_dn: 'canbothon9', ho_ten: 'Tran Quang Huy', mk: 'demo123' },
+  { ten_dn: 'canbothon10', ho_ten: 'Pham Duc Thinh', mk: 'demo123' },
 ]
 
 const DAN = [
@@ -85,7 +85,7 @@ async function seed() {
         [cb.ho_ten, thonRows[i].id, cb.ten_dn, hash]
       )
     }
-    console.log('  - 10 can bo thon (canbothon1..10 / demo123..132)')
+    console.log('  - 10 can bo thon (canbothon1..10 / demo123)')
 
     // 4. 30 dan (3 nguoi/thon), mat khau chung MK_DAN
     const hashDan = await bcrypt.hash(MK_DAN, 10)
@@ -162,7 +162,7 @@ async function seed() {
     console.log('\nSeed hoan tat!')
     console.log('=== TAI KHOAN TEST (theo Excel) ===')
     console.log(`Can bo xa:   canboxa / ${MK_XA}`)
-    console.log(`Can bo thon: canbothon1..10 / demo123..132`)
+    console.log(`Can bo thon: canbothon1..10 / demo123`)
     console.log(`Nguoi dan:   CCCD 048025000001..030 + ho ten (mat khau: ${MK_DAN})`)
   } catch (err: any) {
     console.error('Seed error:', err)

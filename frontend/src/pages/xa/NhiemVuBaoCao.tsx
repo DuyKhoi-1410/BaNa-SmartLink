@@ -43,7 +43,7 @@ export default function NhiemVuBaoCao() {
             loai: dot.loai === 'dinh_ky' ? 'dinh-ky' : 'dot-xuat',
             ngayBatDau: dot.ngay_bat_dau,
             ngayHetHan: dot.ngay_ket_thuc,
-            chiTieu: tatCaChiTieu,
+            chiTieu: dot.chi_tieu || tatCaChiTieu,
             soThonDaNop,
             tongSoThon,
           }
@@ -102,7 +102,7 @@ export default function NhiemVuBaoCao() {
           ten: thon.ten_thon,
           daNop,
           ngayNop: daNop && vDecl?.updated_at ? vDecl.updated_at : null,
-          duLieuCT: daNop ? duLieuCT : {},
+          duLieuCT: daNop ? duLieuCT : { CT01: duLieuCT['CT01'] ?? 0 },
         }
       })
     } catch (err) {
@@ -131,6 +131,7 @@ export default function NhiemVuBaoCao() {
       ngay_bat_dau: baoCaoMoi.ngayBatDau,
       ngay_ket_thuc: baoCaoMoi.ngayHetHan,
       mo_ta: baoCaoMoi.chiTiet || '',
+      chi_tieu: baoCaoMoi.chiTieu,
     })
     if (baoCaoMoi.dinhKem?.length > 0 && dotMoi?.id) {
       await Promise.all(baoCaoMoi.dinhKem.map(item => {

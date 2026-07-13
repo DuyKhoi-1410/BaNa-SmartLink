@@ -17,10 +17,20 @@ export async function layDangMo() {
 
 export async function taoMoi(data) {
   const result = await query(
-    `INSERT INTO dot_ke_khai (ten_dot, mo_ta, loai, quy, nam, ngay_bat_dau, ngay_ket_thuc, nguoi_tao_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-    [data.ten_dot, data.mo_ta, data.loai, data.quy, data.nam, data.ngay_bat_dau, data.ngay_ket_thuc, data.nguoi_tao_id]
+    `INSERT INTO dot_ke_khai (ten_dot, mo_ta, loai, quy, nam, ngay_bat_dau, ngay_ket_thuc, chi_tieu, nguoi_tao_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+    [data.ten_dot, data.mo_ta, data.loai, data.quy, data.nam, data.ngay_bat_dau, data.ngay_ket_thuc, data.chi_tieu ? JSON.stringify(data.chi_tieu) : null, data.nguoi_tao_id]
   )
   return result.rows[0]
+}
+
+export async function layDangMoChoDan(nguoiDungCreatedAt: string) {
+  const result = await query(
+    `SELECT * FROM dot_ke_khai WHERE trang_thai = 'dang_mo'
+       AND (created_at >= $1 OR ngay_ket_thuc >= CURRENT_DATE)
+     ORDER BY ngay_ket_thuc ASC`,
+    [nguoiDungCreatedAt]
+  )
+  return result.rows
 }
 
 export async function capNhatTrangThai(id, trangThai) {

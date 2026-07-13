@@ -80,7 +80,7 @@ export default function FormKeKhaiThon({ hienPopup, dongPopup, nhiemVu, duLieuTh
     setLoiValidation(prev => ({ ...prev, [ct]: loi }))
   }
 
-  const xuLyLuu = () => {
+  const xuLyLuu = async () => {
     const loiMoi = {}
     let coLoi = false
     danhSachCTCanNhap.forEach(ct => {
@@ -94,7 +94,7 @@ export default function FormKeKhaiThon({ hienPopup, dongPopup, nhiemVu, duLieuTh
     danhSachCTCanNhap.forEach(ct => {
       duLieuSo[ct] = parseInt(duLieu[ct]) || 0
     })
-    luuDuLieu(duLieuSo)
+    await luuDuLieu(duLieuSo)
     dongPopup()
   }
 

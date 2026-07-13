@@ -17,8 +17,8 @@ export async function duyetKeKhai(id, nguoiDuyetId) {
   return keKhaiHoRepo.duyetKeKhai(id, nguoiDuyetId)
 }
 
-export async function traLaiKeKhai(id, nguoiDuyetId, lyDo) {
-  return keKhaiHoRepo.traLaiKeKhai(id, nguoiDuyetId, lyDo)
+export async function traLaiKeKhai(id, nguoiDuyetId, lyDo, chiTieuTraLai?) {
+  return keKhaiHoRepo.traLaiKeKhai(id, nguoiDuyetId, lyDo, chiTieuTraLai)
 }
 
 export async function keKhaiThon(data) {

@@ -1,3 +1,33 @@
+// ===== UTILS =====
+
+export function sanitizeSoNguyen(value: any): number | null {
+  if (value === undefined || value === null || value === '') return null
+  const str = String(value).replace(/[.,\s]/g, '')
+  const num = Number(str)
+  if (isNaN(num) || !Number.isInteger(num)) return null
+  return num
+}
+
+export function sanitizeKeKhaiFields(body: any) {
+  const fields = ['ct02_tong_nhan_khau', 'ct03_ho_ngheo', 'ct04_ho_can_ngheo', 'ct05_nguoi_co_cong', 'ct06_bao_tro_xh', 'ct07_tre_duoi_16', 'ct08_tre_hoan_canh', 'ct10_tuoi_lao_dong', 'ct11_tham_gia_bhyt']
+  for (const f of fields) {
+    if (body[f] !== undefined && body[f] !== null) {
+      body[f] = sanitizeSoNguyen(body[f])
+    }
+  }
+  return body
+}
+
+export function sanitizeKeKhaiThonFields(body: any) {
+  const fields = ['ct09_gia_dinh_van_hoa', 'ct12_thanh_vien_to_cnsc', 'ct13_huong_dan_dvc', 'ct14_bao_luc_gia_dinh']
+  for (const f of fields) {
+    if (body[f] !== undefined && body[f] !== null) {
+      body[f] = sanitizeSoNguyen(body[f])
+    }
+  }
+  return body
+}
+
 // ===== REQUEST DTOs =====
 
 export function validateLoginDan(body) {
@@ -51,10 +81,31 @@ export function validateKeKhaiHo(body) {
       errors.push('CT11: So nguoi tham gia BHYT khong the nhieu hon tong nhan khau')
     }
   }
+  const ct02 = Number(body.ct02_tong_nhan_khau)
+  if (body.ct05_nguoi_co_cong !== undefined && body.ct02_tong_nhan_khau !== undefined) {
+    if (Number(body.ct05_nguoi_co_cong) > ct02) {
+      errors.push('CT05: Nguoi co cong khong the nhieu hon tong nhan khau')
+    }
+  }
+  if (body.ct06_bao_tro_xh !== undefined && body.ct02_tong_nhan_khau !== undefined) {
+    if (Number(body.ct06_bao_tro_xh) > ct02) {
+      errors.push('CT06: Doi tuong bao tro XH khong the nhieu hon tong nhan khau')
+    }
+  }
+  if (body.ct07_tre_duoi_16 !== undefined && body.ct02_tong_nhan_khau !== undefined) {
+    if (Number(body.ct07_tre_duoi_16) > ct02) {
+      errors.push('CT07: Tre em duoi 16 khong the nhieu hon tong nhan khau')
+    }
+  }
+  if (body.ct10_tuoi_lao_dong !== undefined && body.ct02_tong_nhan_khau !== undefined) {
+    if (Number(body.ct10_tuoi_lao_dong) > ct02) {
+      errors.push('CT10: Nguoi trong tuoi lao dong khong the nhieu hon tong nhan khau')
+    }
+  }
   return errors
 }
 
-export function validateKeKhaiThon(body) {
+export function validateKeKhaiThon(body, context?: { tongHo?: number, tongNhanKhau?: number }) {
   const errors = []
   const fields = ['ct09_gia_dinh_van_hoa', 'ct12_thanh_vien_to_cnsc', 'ct13_huong_dan_dvc', 'ct14_bao_luc_gia_dinh']
   for (const f of fields) {
@@ -65,6 +116,66 @@ export function validateKeKhaiThon(body) {
       }
     }
   }
+  if (context) {
+    if (context.tongHo !== undefined && body.ct09_gia_dinh_van_hoa !== undefined) {
+      if (Number(body.ct09_gia_dinh_van_hoa) > context.tongHo) {
+        errors.push('CT09: So ho gia dinh van hoa khong the nhieu hon tong so ho')
+      }
+    }
+    if (context.tongNhanKhau !== undefined && body.ct12_thanh_vien_to_cnsc !== undefined) {
+      if (Number(body.ct12_thanh_vien_to_cnsc) > context.tongNhanKhau) {
+        errors.push('CT12: Thanh vien To CNSC khong the nhieu hon tong nhan khau')
+      }
+    }
+    if (context.tongNhanKhau !== undefined && body.ct13_huong_dan_dvc !== undefined) {
+      if (Number(body.ct13_huong_dan_dvc) > context.tongNhanKhau) {
+        errors.push('CT13: Nguoi huong dan DVC khong the nhieu hon tong nhan khau')
+      }
+    }
+  }
+  return errors
+}
+
+export function validateTongHopThon(tongHop: {
+  ct01_tong_ho: number, ct02_tong_nhan_khau: number, ct03_ho_ngheo: number,
+  ct04_ho_can_ngheo: number, ct07_tre_duoi_16: number, ct08_tre_hoan_canh: number,
+  ct09_gia_dinh_van_hoa: number, ct10_tuoi_lao_dong: number, ct11_tham_gia_bhyt: number,
+}) {
+  const errors = []
+  const ct01 = Number(tongHop.ct01_tong_ho)
+  const ct02 = Number(tongHop.ct02_tong_nhan_khau)
+  const ct03 = Number(tongHop.ct03_ho_ngheo)
+  const ct04 = Number(tongHop.ct04_ho_can_ngheo)
+  const ct07 = Number(tongHop.ct07_tre_duoi_16)
+  const ct08 = Number(tongHop.ct08_tre_hoan_canh)
+  const ct09 = Number(tongHop.ct09_gia_dinh_van_hoa)
+  const ct10 = Number(tongHop.ct10_tuoi_lao_dong)
+  const ct11 = Number(tongHop.ct11_tham_gia_bhyt)
+
+  if (ct01 > 0 && (ct02 < ct01 * 3 || ct02 > ct01 * 4.5)) {
+    errors.push('CT02: Tong nhan khau khong hop ly so voi tong so ho (ky vong 3-4.5 lan)')
+  }
+  if (ct03 > ct01) {
+    errors.push('CT03: So ho ngheo khong the nhieu hon tong so ho')
+  }
+  if (ct03 + ct04 > ct01) {
+    errors.push('CT03+CT04: Tong ho ngheo + can ngheo vuot qua tong so ho')
+  }
+  if (ct07 > ct02) {
+    errors.push('CT07: So tre em khong the nhieu hon tong nhan khau')
+  }
+  if (ct08 > ct07) {
+    errors.push('CT08: Tre em hoan canh dac biet khong the nhieu hon tong tre em')
+  }
+  if (ct09 > ct01) {
+    errors.push('CT09: So ho gia dinh van hoa khong the nhieu hon tong so ho')
+  }
+  if (ct10 > ct02) {
+    errors.push('CT10: Nguoi trong tuoi lao dong khong the nhieu hon tong nhan khau')
+  }
+  if (ct11 > ct02) {
+    errors.push('CT11: Nguoi tham gia BHYT khong the nhieu hon tong nhan khau')
+  }
   return errors
 }
 
@@ -74,7 +185,14 @@ export function validateDotKeKhai(body) {
   if (!body.loai || !['dinh_ky', 'dot_xuat'].includes(body.loai)) errors.push('Loai phai la dinh_ky hoac dot_xuat')
   if (!body.nam) errors.push('Thieu nam')
   if (!body.ngay_bat_dau) errors.push('Thieu ngay bat dau')
+  else {
+    const homNay = new Date().toISOString().split('T')[0]
+    if (body.ngay_bat_dau < homNay) errors.push('Ngay bat dau khong duoc truoc ngay hom nay')
+  }
   if (!body.ngay_ket_thuc) errors.push('Thieu ngay ket thuc')
+  if (body.ngay_bat_dau && body.ngay_ket_thuc && body.ngay_bat_dau > body.ngay_ket_thuc) {
+    errors.push('Ngay ket thuc phai sau ngay bat dau')
+  }
   return errors
 }
 
@@ -212,6 +330,7 @@ export function toDeclarationResponse(row) {
     ct11_tham_gia_bhyt: row.ct11_tham_gia_bhyt,
     trang_thai: row.trang_thai,
     ly_do_tra_lai: row.ly_do_tra_lai,
+    chi_tieu_tra_lai: row.chi_tieu_tra_lai,
     ngay_ke_khai: row.ngay_ke_khai,
     ngay_duyet: row.ngay_duyet,
     ho_ten_chu_ho: row.ho_ten_chu_ho,
@@ -231,5 +350,6 @@ export function toPeriodResponse(row) {
     ngay_bat_dau: row.ngay_bat_dau,
     ngay_ket_thuc: row.ngay_ket_thuc,
     trang_thai: row.trang_thai,
+    chi_tieu: row.chi_tieu,
   }
 }

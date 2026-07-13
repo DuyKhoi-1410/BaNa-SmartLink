@@ -46,6 +46,12 @@ export async function xuatExcelTongHop(dotId) {
 
   const duLieuThon = await keKhaiService.tongHopXa(dotId)
 
+  // Lọc CT theo đợt: nếu đợt có chi_tieu thì chỉ xuất những CT đó, không thì xuất tất cả
+  const chiTieuDot: string[] | null = dotKeKhai.chi_tieu
+  const danhSachCTXuat = chiTieuDot && chiTieuDot.length > 0
+    ? danhSachCT.filter(ct => chiTieuDot.includes(ct.ma))
+    : danhSachCT
+
   const workbook = new ExcelJS.Workbook()
   workbook.creator = 'Ba Na SmartLink'
   workbook.created = new Date()
@@ -97,8 +103,8 @@ export async function xuatExcelTongHop(dotId) {
     if (col > 2) ws.getColumn(col).width = 16
   }
 
-  // Dữ liệu từng CT
-  danhSachCT.forEach((ct, index) => {
+  // Dữ liệu từng CT (chỉ xuất CT đã chọn)
+  danhSachCTXuat.forEach((ct, index) => {
     const rowNum = 5 + index
     const row = ws.getRow(rowNum)
     row.height = 26
@@ -132,9 +138,9 @@ export async function xuatExcelTongHop(dotId) {
   })
 
   // Dòng tổng tiến độ
-  const rowTienDo = ws.getRow(5 + danhSachCT.length + 1)
+  const rowTienDo = ws.getRow(5 + danhSachCTXuat.length + 1)
   rowTienDo.height = 26
-  ws.getRow(5 + danhSachCT.length).height = 10
+  ws.getRow(5 + danhSachCTXuat.length).height = 10
 
   const tienDoValues = ['', 'Tiến độ kê khai']
   duLieuThon.forEach(t => {
@@ -199,8 +205,8 @@ export async function xuatExcelTongHop(dotId) {
       boVien(cell)
     }
 
-    // Data
-    danhSachCT.forEach((ct, i) => {
+    // Data (chỉ xuất CT đã chọn)
+    danhSachCTXuat.forEach((ct, i) => {
       const row = wsThon.getRow(5 + i)
       row.values = [i + 1, ct.ma, ct.ten, parseInt(thon[ct.key]) || 0]
       row.height = 24
@@ -218,10 +224,10 @@ export async function xuatExcelTongHop(dotId) {
     // Tiến độ
     const td = thon.tien_do
     if (td) {
-      const rowSkip = wsThon.getRow(5 + danhSachCT.length)
+      const rowSkip = wsThon.getRow(5 + danhSachCTXuat.length)
       rowSkip.height = 8
 
-      const tdRow = wsThon.getRow(5 + danhSachCT.length + 1)
+      const tdRow = wsThon.getRow(5 + danhSachCTXuat.length + 1)
       wsThon.mergeCells(tdRow.number, 1, tdRow.number, 4)
       const tdCell = tdRow.getCell(1)
       tdCell.value = `Tiến độ: ${td.da_duyet}/${td.tong_ho} hộ đã duyệt — ${td.da_ke_khai} đã kê khai — ${td.tra_lai} trả lại`
@@ -232,5 +238,5 @@ export async function xuatExcelTongHop(dotId) {
     }
   }
 
-  return { workbook, tenFile: `BaoCao_${dotKeKhai.ten_dot.replace(/\s+/g, '_')}_${Date.now()}.xlsx` }
+  return { workbook, tenFile: `Báo Cáo ${dotKeKhai.ten_dot}.xlsx` }
 }

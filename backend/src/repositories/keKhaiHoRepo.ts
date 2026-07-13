@@ -1,22 +1,25 @@
 import { query } from './db.js'
 
 export async function layTheoDot(dotId, thonId) {
-  let sql = `SELECT kk.*, nd.ho_ten AS ho_ten_chu_ho, t.ten_thon, hd.thon_id
+  let innerWhere = `kk.dot_id = $1`
+  const params = [dotId]
+  if (thonId) { params.push(thonId); innerWhere += ` AND hd.thon_id = $${params.length}` }
+  const sql = `SELECT * FROM (
+    SELECT DISTINCT ON (kk.ho_dan_id) kk.*, nd.ho_ten AS ho_ten_chu_ho, t.ten_thon, hd.thon_id
     FROM ke_khai_ho kk
     JOIN ho_dan hd ON kk.ho_dan_id = hd.id
     JOIN nguoi_dung nd ON hd.chu_ho_id = nd.id
     JOIN thon t ON hd.thon_id = t.id
-    WHERE kk.dot_id = $1`
-  const params = [dotId]
-  if (thonId) { params.push(thonId); sql += ` AND hd.thon_id = $${params.length}` }
-  sql += ` ORDER BY nd.ho_ten`
+    WHERE ${innerWhere}
+    ORDER BY kk.ho_dan_id, kk.phien_ban DESC
+  ) sub ORDER BY ho_ten_chu_ho`
   const result = await query(sql, params)
   return result.rows
 }
 
 export async function timTheoId(id) {
   const result = await query(
-    `SELECT kk.*, nd.ho_ten AS ho_ten_chu_ho, t.ten_thon
+    `SELECT kk.*, nd.ho_ten AS ho_ten_chu_ho, t.ten_thon, hd.thon_id
     FROM ke_khai_ho kk
     JOIN ho_dan hd ON kk.ho_dan_id = hd.id
     JOIN nguoi_dung nd ON hd.chu_ho_id = nd.id
@@ -65,10 +68,10 @@ export async function duyetKeKhai(id, nguoiDuyetId) {
   return result.rows[0]
 }
 
-export async function traLaiKeKhai(id, nguoiDuyetId, lyDo) {
+export async function traLaiKeKhai(id, nguoiDuyetId, lyDo, chiTieuTraLai?) {
   const result = await query(
-    `UPDATE ke_khai_ho SET trang_thai = 'tra_lai', nguoi_duyet_id = $1, ly_do_tra_lai = $2, ngay_duyet = NOW(), updated_at = NOW() WHERE id = $3 RETURNING *`,
-    [nguoiDuyetId, lyDo, id]
+    `UPDATE ke_khai_ho SET trang_thai = 'tra_lai', nguoi_duyet_id = $1, ly_do_tra_lai = $2, chi_tieu_tra_lai = $3, ngay_duyet = NOW(), updated_at = NOW() WHERE id = $4 RETURNING *`,
+    [nguoiDuyetId, lyDo, chiTieuTraLai ? JSON.stringify(chiTieuTraLai) : null, id]
   )
   return result.rows[0]
 }
@@ -81,7 +84,9 @@ export async function tienDoThon(dotId, thonId) {
       COUNT(kk.id) FILTER (WHERE kk.trang_thai = 'da_duyet') AS da_duyet,
       COUNT(kk.id) FILTER (WHERE kk.trang_thai = 'tra_lai') AS tra_lai
     FROM ho_dan hd
-    LEFT JOIN ke_khai_ho kk ON hd.id = kk.ho_dan_id AND kk.dot_id = $1
+    LEFT JOIN LATERAL (
+      SELECT id, trang_thai FROM ke_khai_ho WHERE ho_dan_id = hd.id AND dot_id = $1 ORDER BY phien_ban DESC LIMIT 1
+    ) kk ON TRUE
     WHERE hd.thon_id = $2 AND hd.trang_thai = 'dang_cu_tru'`,
     [dotId, thonId]
   )

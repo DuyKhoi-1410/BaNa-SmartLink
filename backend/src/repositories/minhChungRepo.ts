@@ -8,6 +8,19 @@ export async function layTheoKeKhaiHo(keKhaiHoId) {
   return result.rows
 }
 
+export async function layTheoTatCaPhienBan(keKhaiHoId) {
+  const result = await query(
+    `SELECT mc.* FROM minh_chung mc
+     JOIN ke_khai_ho kk ON mc.ke_khai_ho_id = kk.id
+     WHERE kk.ho_dan_id = (SELECT ho_dan_id FROM ke_khai_ho WHERE id = $1)
+       AND kk.dot_id = (SELECT dot_id FROM ke_khai_ho WHERE id = $1)
+       AND mc.da_xoa = FALSE
+     ORDER BY mc.ma_chi_tieu, mc.created_at DESC`,
+    [keKhaiHoId]
+  )
+  return result.rows
+}
+
 export async function layTheoKeKhaiThon(keKhaiThonId) {
   const result = await query(
     `SELECT * FROM minh_chung WHERE ke_khai_thon_id = $1 AND da_xoa = FALSE ORDER BY ma_chi_tieu, created_at DESC`,

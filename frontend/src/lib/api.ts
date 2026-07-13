@@ -69,7 +69,12 @@ async function goi<T>(endpoint: string, options: RequestInit, coFormData = false
   const access = tokenStore.getAccess()
   if (access) headers['Authorization'] = `Bearer ${access}`
 
-  const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers })
+  let res: Response
+  try {
+    res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers })
+  } catch {
+    throw { status: 0, code: 'NETWORK_ERROR', message: 'Khong the ket noi den may chu. Vui long kiem tra mang va thu lai.', error: 'Khong the ket noi den may chu. Vui long kiem tra mang va thu lai.' }
+  }
 
   let json: any = null
   try { json = await res.json() } catch { /* file/empty */ }

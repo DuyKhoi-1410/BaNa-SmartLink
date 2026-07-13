@@ -32,7 +32,11 @@ export default function ChiTietNhiemVuThon({ nhiemVu, thonId, quayLai }) {
       ])
 
       const keKhaiMap = {}
-      keKhaiList.forEach(kk => { keKhaiMap[kk.ho_dan_id] = kk })
+      keKhaiList.forEach(kk => {
+        if (!keKhaiMap[kk.ho_dan_id] || kk.phien_ban > keKhaiMap[kk.ho_dan_id].phien_ban) {
+          keKhaiMap[kk.ho_dan_id] = kk
+        }
+      })
       const fieldMap = {
         CT01: null, CT02: 'ct02_tong_nhan_khau', CT03: 'ct03_ho_ngheo',
         CT04: 'ct04_ho_can_ngheo', CT05: 'ct05_nguoi_co_cong', CT06: 'ct06_bao_tro_xh',
@@ -104,13 +108,16 @@ export default function ChiTietNhiemVuThon({ nhiemVu, thonId, quayLai }) {
     const hoDaDuyetList = danhSachHo.filter(h => h.daNop && h.trangThaiDuyet === 'da-duyet')
     const tong = {}
     nhiemVu.chiTieu.forEach(ct => {
-      tong[ct] = hoDaDuyetList.reduce((s, ho) => s + (ho.duLieuCT?.[ct] ?? 0), 0)
+      if (ct === 'CT01') {
+        tong[ct] = danhSachHo.length
+      } else {
+        tong[ct] = hoDaDuyetList.reduce((s, ho) => s + (ho.duLieuCT?.[ct] ?? 0), 0)
+      }
     })
     return tong
   }, [nhiemVu, danhSachHo])
 
   const luuDuLieuThon = useCallback(async (duLieuMoi) => {
-    setDuLieuThon(duLieuMoi)
     try {
       await api.post('/village-declarations', {
         dot_id: nhiemVu.id,
@@ -120,10 +127,13 @@ export default function ChiTietNhiemVuThon({ nhiemVu, thonId, quayLai }) {
         ct13_huong_dan_dvc: duLieuMoi.CT13 ?? 0,
         ct14_bao_luc_gia_dinh: duLieuMoi.CT14 ?? 0,
       })
+      setDuLieuThon(duLieuMoi)
       setNoiDungToast('Lưu kê khai thôn thành công!')
       setHienToast(true)
-    } catch (err) {
+    } catch (err: any) {
       console.error('Loi luu ke khai thon:', err)
+      setNoiDungToast('Lỗi lưu kê khai: ' + (err.message || 'Vui lòng thử lại'))
+      setHienToast(true)
     }
   }, [nhiemVu.id, thonId])
 
@@ -132,14 +142,14 @@ export default function ChiTietNhiemVuThon({ nhiemVu, thonId, quayLai }) {
     setHienPopupDuyet(true)
   }, [])
 
-  const xuLyDuyet = useCallback(async (hoId, trangThaiMoi, lyDo) => {
+  const xuLyDuyet = useCallback(async (hoId, trangThaiMoi, lyDo, chiTieuTraLai?) => {
     const ho = danhSachHo.find(h => h.id === hoId)
     if (!ho?.keKhaiId) return
     try {
       if (trangThaiMoi === 'da-duyet') {
         await api.patch(`/declarations/${ho.keKhaiId}/duyet`)
       } else if (trangThaiMoi === 'tu-choi') {
-        await api.patch(`/declarations/${ho.keKhaiId}/tra-lai`, { ly_do: lyDo })
+        await api.patch(`/declarations/${ho.keKhaiId}/tra-lai`, { ly_do: lyDo, chi_tieu_tra_lai: chiTieuTraLai })
       }
       await taiKeKhai()
     } catch (err) {
@@ -303,15 +313,26 @@ export default function ChiTietNhiemVuThon({ nhiemVu, thonId, quayLai }) {
                     {file.mo_ta && <p className="text-xs text-slate-500 mt-0.5">{file.mo_ta}</p>}
                   </div>
                   <span className="text-xs text-slate-400 flex-shrink-0">{file.file_size ? (file.file_size / 1024).toFixed(0) + ' KB' : ''}</span>
-                  <a
-                    href={file.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await fetch(file.file_url)
+                        const blob = await res.blob()
+                        const url = URL.createObjectURL(blob)
+                        const a = document.createElement('a')
+                        a.href = url
+                        a.download = file.file_name || 'tai-xuong'
+                        document.body.appendChild(a)
+                        a.click()
+                        a.remove()
+                        URL.revokeObjectURL(url)
+                      } catch { /* ignore */ }
+                    }}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-blue-100 text-blue-600 hover:text-blue-700 transition-colors flex-shrink-0 text-xs font-medium"
                   >
                     <Download size={14} />
                     Tải xuống
-                  </a>
+                  </button>
                 </div>
               ))}
             </div>

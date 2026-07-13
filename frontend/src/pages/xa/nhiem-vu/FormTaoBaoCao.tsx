@@ -65,6 +65,9 @@ export default function FormTaoBaoCao({ hienPopup, dongPopup, themBaoCao }: any)
     if (!form.ten.trim()) loi.ten = 'Vui lòng nhập tên báo cáo'
     if (form.chiTieu.length === 0) loi.chiTieu = 'Vui lòng chọn ít nhất 1 chỉ tiêu'
     if (!form.ngayBatDau) loi.ngayBatDau = 'Vui lòng chọn ngày bắt đầu'
+    else if (form.ngayBatDau < new Date().toISOString().split('T')[0]) {
+      loi.ngayBatDau = 'Ngày bắt đầu không được trước ngày hôm nay'
+    }
     if (!form.ngayHetHan) loi.ngayHetHan = 'Vui lòng chọn ngày hết hạn'
     if (form.ngayBatDau && form.ngayHetHan && form.ngayBatDau > form.ngayHetHan) {
       loi.ngayHetHan = 'Ngày hết hạn phải sau ngày bắt đầu'
@@ -206,6 +209,7 @@ export default function FormTaoBaoCao({ hienPopup, dongPopup, themBaoCao }: any)
               <input
                 type="date"
                 value={form.ngayBatDau}
+                min={new Date().toISOString().split('T')[0]}
                 onChange={(e) => { setForm(prev => ({ ...prev, ngayBatDau: e.target.value })); setLoiForm(prev => ({ ...prev, ngayBatDau: undefined })) }}
                 className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 transition-colors ${loiForm.ngayBatDau ? 'border-red-400 focus:ring-red-500/40 focus:border-red-500' : 'border-slate-300 focus:ring-blue-500/40 focus:border-blue-500'}`}
               />

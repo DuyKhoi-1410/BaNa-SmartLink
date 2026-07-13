@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
-import { CalendarDays, Clock, Users, ArrowLeft, CheckCircle2, FileText, Download, Database, BarChart3, Building2, Trash2, Loader2, Paperclip, Upload } from 'lucide-react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
+import { CalendarDays, Clock, Users, ArrowLeft, CheckCircle2, FileText, Download, Database, BarChart3, Building2, Trash2, Loader2, Paperclip, Upload, FileSpreadsheet } from 'lucide-react'
 import { danhSachCT } from './constants'
 import { tinhTrangThai, dinhDangNgay } from './utils'
 import { api } from '../../../lib/api'
@@ -54,6 +54,37 @@ export default function ChiTietBaoCao({ baoCao, danhSachThon, quayLai }) {
     }
   }
 
+  const [dangXuatExcel, setDangXuatExcel] = useState(false)
+
+  const xuatExcel = useCallback(async () => {
+    setDangXuatExcel(true)
+    try {
+      const token = localStorage.getItem('accessToken')
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1'
+      const res = await fetch(`${baseUrl}/reports/xuat-excel/${baoCao.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error('Lỗi xuất Excel')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const disposition = res.headers.get('Content-Disposition')
+      const fileName = disposition
+        ? decodeURIComponent(disposition.split('filename="')[1]?.replace('"', '') || 'BaoCao.xlsx')
+        : 'BaoCao.xlsx'
+      a.download = fileName
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      alert('Không thể xuất Excel: ' + (err.message || 'Lỗi'))
+    } finally {
+      setDangXuatExcel(false)
+    }
+  }, [baoCao.id])
+
   const trangThai = tinhTrangThai(baoCao.ngayHetHan)
   const phanTram = Math.round((baoCao.soThonDaNop / baoCao.tongSoThon) * 100)
 
@@ -61,7 +92,11 @@ export default function ChiTietBaoCao({ baoCao, danhSachThon, quayLai }) {
     const thonDaNop = danhSachThon.filter(t => t.daNop)
     const tong = {}
     baoCao.chiTieu.forEach(ct => {
-      tong[ct] = thonDaNop.reduce((s, thon) => s + (thon.duLieuCT?.[ct] ?? 0), 0)
+      if (ct === 'CT01') {
+        tong[ct] = danhSachThon.reduce((s, thon) => s + (thon.duLieuCT?.[ct] ?? 0), 0)
+      } else {
+        tong[ct] = thonDaNop.reduce((s, thon) => s + (thon.duLieuCT?.[ct] ?? 0), 0)
+      }
     })
     return tong
   }, [baoCao, danhSachThon])
@@ -174,15 +209,26 @@ export default function ChiTietBaoCao({ baoCao, danhSachThon, quayLai }) {
                     {file.mo_ta && <p className="text-xs text-slate-500 mt-0.5">{file.mo_ta}</p>}
                   </div>
                   <span className="text-xs text-slate-400 flex-shrink-0">{(file.file_size / 1024).toFixed(0)} KB</span>
-                  <a
-                    href={file.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await fetch(file.file_url)
+                        const blob = await res.blob()
+                        const url = URL.createObjectURL(blob)
+                        const a = document.createElement('a')
+                        a.href = url
+                        a.download = file.file_name || 'tai-xuong'
+                        document.body.appendChild(a)
+                        a.click()
+                        a.remove()
+                        URL.revokeObjectURL(url)
+                      } catch { /* ignore */ }
+                    }}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-blue-100 text-blue-600 hover:text-blue-700 transition-colors flex-shrink-0 text-xs font-medium"
                   >
                     <Download size={14} />
                     Tải
-                  </a>
+                  </button>
                   <button
                     onClick={() => xoaDinhKem(file.id)}
                     disabled={dangXoaId === file.id}
@@ -209,13 +255,23 @@ export default function ChiTietBaoCao({ baoCao, danhSachThon, quayLai }) {
               (từ {danhSachThon.filter(t => t.daNop).length}/{danhSachThon.length} thôn đã nộp)
             </span>
           </h2>
-          <button
-            onClick={() => setHienPopupChiTiet(true)}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-semibold rounded-lg text-sm shadow-md shadow-indigo-500/25 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-500/30 active:translate-y-0 active:scale-[0.98] active:shadow-sm"
-          >
-            <Database size={16} />
-            Chi tiết kê khai
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={xuatExcel}
+              disabled={dangXuatExcel}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-semibold rounded-lg text-sm shadow-md shadow-teal-500/25 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-lg hover:shadow-teal-500/30 active:translate-y-0 active:scale-[0.98] active:shadow-sm disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+            >
+              {dangXuatExcel ? <Loader2 size={16} className="animate-spin" /> : <FileSpreadsheet size={16} />}
+              Xuất Excel
+            </button>
+            <button
+              onClick={() => setHienPopupChiTiet(true)}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-semibold rounded-lg text-sm shadow-md shadow-indigo-500/25 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-500/30 active:translate-y-0 active:scale-[0.98] active:shadow-sm"
+            >
+              <Database size={16} />
+              Chi tiết kê khai
+            </button>
+          </div>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {baoCao.chiTieu.map(ct => (

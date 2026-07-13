@@ -137,7 +137,11 @@ export default function KeKhai() {
         setHoDanId(hoDan.id)
 
         const kkMap = {}
-        keKhai.forEach(kk => { kkMap[kk.dot_id] = kk })
+        keKhai.forEach(kk => {
+          if (!kkMap[kk.dot_id] || kk.phien_ban > kkMap[kk.dot_id].phien_ban) {
+            kkMap[kk.dot_id] = kk
+          }
+        })
         setKeKhaiMap(kkMap)
 
         const dsDot = dotMo.map(dot => {
@@ -150,6 +154,7 @@ export default function KeKhai() {
             ngayDong: dot.ngay_ket_thuc,
             trangThai: mapTrangThaiDot(dot.trang_thai, kk),
             ghiChuChung: kk?.ly_do_tra_lai || '',
+            danhSachTraLai: kk?.chi_tieu_tra_lai || [],
             keKhaiId: kk?.id,
           }
         })
@@ -176,35 +181,48 @@ export default function KeKhai() {
   const laBuocCuoi = buocHienTai === tongSoBuoc - 1
 
 
+  const chuyenKeKhaiThanhDuLieu = (kk) => {
+    if (!kk) return null
+    return {
+      CT02: String(kk.ct02_tong_nhan_khau || ''),
+      CT03: kk.ct03_ho_ngheo === 1 ? true : kk.ct03_ho_ngheo === 0 ? false : null,
+      CT04: kk.ct04_ho_can_ngheo === 1 ? true : kk.ct04_ho_can_ngheo === 0 ? false : null,
+      CT05: String(kk.ct05_nguoi_co_cong || ''),
+      CT06: String(kk.ct06_bao_tro_xh || ''),
+      CT07: String(kk.ct07_tre_duoi_16 || ''),
+      CT08: String(kk.ct08_tre_hoan_canh || ''),
+      CT10: String(kk.ct10_tuoi_lao_dong || ''),
+      CT11: String(kk.ct11_tham_gia_bhyt || ''),
+    }
+  }
+
   const layDuLieuGanNhat = () => {
     const cacDotDaNop = Object.keys(duLieuDaNop)
-    if (cacDotDaNop.length === 0) return null
-    const dotSapXep = cacDotDaNop
-      .map(id => danhSachDot.find(d => d.id === Number(id)))
-      .filter(Boolean)
-      .sort((a: any, b: any) => new Date(b.ngayMo).getTime() - new Date(a.ngayMo).getTime())
-    if (dotSapXep.length === 0) return null
-    return duLieuDaNop[dotSapXep[0].id]
+    if (cacDotDaNop.length > 0) {
+      const dotSapXep = cacDotDaNop
+        .map(id => danhSachDot.find(d => d.id === Number(id)))
+        .filter(Boolean)
+        .sort((a: any, b: any) => new Date(b.ngayMo).getTime() - new Date(a.ngayMo).getTime())
+      if (dotSapXep.length > 0) return duLieuDaNop[dotSapXep[0].id]
+    }
+    const cacDotCoKeKhai = Object.entries(keKhaiMap)
+      .map(([dotId, kk]: [string, any]) => ({ dotId: Number(dotId), kk }))
+      .filter(({ kk }) => kk && kk.trang_thai)
+      .sort((a, b) => new Date(b.kk.ngay_ke_khai).getTime() - new Date(a.kk.ngay_ke_khai).getTime())
+    if (cacDotCoKeKhai.length === 0) return null
+    return chuyenKeKhaiThanhDuLieu(cacDotCoKeKhai[0].kk)
   }
 
   const moFormKeKhai = (dot) => {
     setDotDangChon(dot)
     const kkTuDB = keKhaiMap[dot.id]
-    const duLieuCuaDot = duLieuDaNop[dot.id] || (kkTuDB ? {
-      CT02: String(kkTuDB.ct02_tong_nhan_khau || ''),
-      CT03: kkTuDB.ct03_ho_ngheo === 1 ? true : kkTuDB.ct03_ho_ngheo === 0 ? false : null,
-      CT04: kkTuDB.ct04_ho_can_ngheo === 1 ? true : kkTuDB.ct04_ho_can_ngheo === 0 ? false : null,
-      CT05: String(kkTuDB.ct05_nguoi_co_cong || ''),
-      CT06: String(kkTuDB.ct06_bao_tro_xh || ''),
-      CT07: String(kkTuDB.ct07_tre_duoi_16 || ''),
-      CT08: String(kkTuDB.ct08_tre_hoan_canh || ''),
-      CT10: String(kkTuDB.ct10_tuoi_lao_dong || ''),
-      CT11: String(kkTuDB.ct11_tham_gia_bhyt || ''),
-    } : null)
+    const duLieuCuaDot = duLieuDaNop[dot.id] || chuyenKeKhaiThanhDuLieu(kkTuDB)
 
     if (dot.trangThai === 'yeu-cau-lai' && duLieuCuaDot) {
       const duLieuMoi = { ...duLieuCuaDot }
-      const dsCTLai = dot.danhSachTraLai || []
+      const dsCTLai = (dot.danhSachTraLai && dot.danhSachTraLai.length > 0)
+        ? dot.danhSachTraLai
+        : DANH_SACH_CT.map(ct => ({ ma: ct.ma, ghiChu: '' }))
       dsCTLai.forEach(item => {
         const ct = DANH_SACH_CT.find(c => c.ma === item.ma)
         if (ct) duLieuMoi[item.ma] = ct.loaiNhap === 'co-khong' ? null : ''
@@ -848,7 +866,7 @@ export default function KeKhai() {
         <div className="mb-6 p-3 bg-blue-50 rounded-xl flex items-start gap-3">
           <Info size={18} className="text-blue-500 mt-0.5 flex-shrink-0" />
           <p className="text-sm text-blue-700">
-            Nhập giá trị và tải minh chứng cho từng chỉ tiêu. Mỗi mục sẽ <strong>tự động thu gọn</strong> khi hoàn tất. Ấn <strong>biểu tượng bút chì</strong> để chỉnh sửa lại.
+            Vui lòng kê khai <strong>chính xác, đúng thực tế</strong> và đính kèm <strong>minh chứng</strong> (ảnh chụp giấy tờ) cho từng chỉ tiêu. Dữ liệu sai có thể bị cán bộ thôn trả lại để kê khai lại.
           </p>
         </div>
       )}

@@ -44,7 +44,7 @@ export default function NhiemVuThon() {
             loai: dot.loai === 'dinh_ky' ? 'dinh-ky' : 'dot-xuat',
             ngayBatDau: dot.ngay_bat_dau,
             ngayHetHan: dot.ngay_ket_thuc,
-            chiTieu: tatCaChiTieu,
+            chiTieu: (dot.chi_tieu && dot.chi_tieu.length > 0) ? dot.chi_tieu : tatCaChiTieu,
             tongSoHo: tongHo,
             soHoDaNop: daKeKhai,
             thongKe: {

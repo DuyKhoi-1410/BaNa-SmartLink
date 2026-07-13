@@ -52,6 +52,41 @@ export function asyncHandler(fn: (req: Request, res: Response, next: NextFunctio
   }
 }
 
+// Dich loi PostgreSQL sang tieng Viet
+function dichLoiDB(err: any): { status: number; code: string; message: string } | null {
+  const msg = err?.message || ''
+  const pgCode = err?.code
+
+  if (msg.includes('value too long for type')) {
+    return { status: 400, code: 'VALUE_TOO_LONG', message: 'Du lieu nhap vao vuot qua do dai cho phep' }
+  }
+  if (pgCode === '23505' || msg.includes('duplicate key') || msg.includes('unique constraint')) {
+    return { status: 409, code: 'DUPLICATE', message: 'Du lieu da ton tai trong he thong' }
+  }
+  if (pgCode === '23503' || msg.includes('foreign key')) {
+    return { status: 400, code: 'REFERENCE_ERROR', message: 'Du lieu tham chieu khong ton tai hoac dang duoc su dung' }
+  }
+  if (pgCode === '23502' || msg.includes('not-null constraint')) {
+    return { status: 400, code: 'MISSING_FIELD', message: 'Thieu truong bat buoc' }
+  }
+  if (pgCode === '23514' || msg.includes('check constraint')) {
+    return { status: 400, code: 'INVALID_VALUE', message: 'Gia tri nhap vao khong hop le' }
+  }
+  if (pgCode === '22001') {
+    return { status: 400, code: 'VALUE_TOO_LONG', message: 'Du lieu nhap vao vuot qua do dai cho phep' }
+  }
+  if (pgCode === '22P02' || msg.includes('invalid input syntax')) {
+    return { status: 400, code: 'INVALID_INPUT', message: 'Dinh dang du lieu khong hop le' }
+  }
+  if (msg.includes('ECONNREFUSED') || msg.includes('ENOTFOUND')) {
+    return { status: 503, code: 'DB_UNAVAILABLE', message: 'Khong the ket noi co so du lieu. Vui long thu lai sau.' }
+  }
+  if (msg.includes('timeout') || msg.includes('ETIMEDOUT')) {
+    return { status: 504, code: 'DB_TIMEOUT', message: 'He thong phan hoi cham. Vui long thu lai sau.' }
+  }
+  return null
+}
+
 // Middleware xu ly loi tap trung: ton trong err.status, format envelope
 export function errorHandler(err: any, _req: Request, res: Response, _next: NextFunction) {
   // Loi validation dang mang string (tu cac validate* cu)
@@ -67,6 +102,24 @@ export function errorHandler(err: any, _req: Request, res: Response, _next: Next
     return res.status(400).json({
       success: false,
       error: { code: 'FILE_TOO_LARGE', message: 'File vuot qua dung luong cho phep' },
+    })
+  }
+
+  // Loi parse JSON (body khong hop le)
+  if (err instanceof SyntaxError && 'body' in err) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_JSON', message: 'Du lieu gui len khong dung dinh dang JSON' },
+    })
+  }
+
+  // Loi tu PostgreSQL -> dich sang tieng Viet
+  const loiDB = dichLoiDB(err)
+  if (loiDB) {
+    console.error('[DB ERROR]', err?.code, err?.message)
+    return res.status(loiDB.status).json({
+      success: false,
+      error: { code: loiDB.code, message: loiDB.message },
     })
   }
 

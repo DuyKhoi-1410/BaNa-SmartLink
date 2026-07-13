@@ -49,6 +49,11 @@ app.use('/api/v1/evidence', evidenceRouter)
 app.use('/api/v1/attachments', attachmentsRouter)
 app.use('/api/v1/nhan-khau', nhanKhauRouter)
 
+// 404 cho route khong ton tai
+app.use((_req, res) => {
+  res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Duong dan khong ton tai' } })
+})
+
 // Xu ly loi tap trung: envelope chuan FastAPI + ton trong err.status
 app.use(errorHandler)
 

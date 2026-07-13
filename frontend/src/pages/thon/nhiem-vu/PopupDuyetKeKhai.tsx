@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, CheckCircle2, XCircle, AlertTriangle, Image, ZoomIn, Loader2 } from 'lucide-react'
+import { X, CheckCircle2, XCircle, AlertTriangle, Image, ZoomIn, Loader2, MessageSquare } from 'lucide-react'
 import { danhSachCT } from './constants'
 import { api } from '../../../lib/api'
 
@@ -9,6 +9,8 @@ export default function PopupDuyetKeKhai({ hienPopup, dongPopup, hoDan, nhiemVu,
   const [danhSachMinhChung, setDanhSachMinhChung] = useState([])
   const [dangTaiMC, setDangTaiMC] = useState(false)
   const [anhPhongTo, setAnhPhongTo] = useState(null)
+  const [ctDaChon, setCtDaChon] = useState<Record<string, boolean>>({})
+  const [ghiChuCT, setGhiChuCT] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (!hienPopup) return
@@ -16,6 +18,8 @@ export default function PopupDuyetKeKhai({ hienPopup, dongPopup, hoDan, nhiemVu,
     setDangTuChoi(false)
     setDanhSachMinhChung([])
     setAnhPhongTo(null)
+    setCtDaChon({})
+    setGhiChuCT({})
     const xuLyEsc = (e) => { if (e.key === 'Escape') { if (anhPhongTo) setAnhPhongTo(null); else dongPopup() } }
     window.addEventListener('keydown', xuLyEsc)
     return () => window.removeEventListener('keydown', xuLyEsc)
@@ -41,7 +45,10 @@ export default function PopupDuyetKeKhai({ hienPopup, dongPopup, hoDan, nhiemVu,
 
   const xacNhanTuChoi = async () => {
     if (!lyDoTuChoi.trim()) return
-    await xuLyDuyet(hoDan.id, 'tu-choi', lyDoTuChoi.trim())
+    const dsCTChon = Object.entries(ctDaChon)
+      .filter(([, v]) => v)
+      .map(([ma]) => ({ ma, ghiChu: ghiChuCT[ma]?.trim() || '' }))
+    await xuLyDuyet(hoDan.id, 'tu-choi', lyDoTuChoi.trim(), dsCTChon.length > 0 ? dsCTChon : undefined)
     dongPopup()
   }
 
@@ -142,17 +149,51 @@ export default function PopupDuyetKeKhai({ hienPopup, dongPopup, hoDan, nhiemVu,
           )}
 
           {dangTuChoi && (
-            <div className="mt-4">
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                Lý do từ chối <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                value={lyDoTuChoi}
-                onChange={(e) => setLyDoTuChoi(e.target.value)}
-                placeholder="Nhập lý do từ chối kê khai..."
-                rows={3}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-colors placeholder:text-slate-400 resize-none"
-              />
+            <div className="mt-4 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                  Lý do từ chối <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={lyDoTuChoi}
+                  onChange={(e) => setLyDoTuChoi(e.target.value)}
+                  placeholder="Nhập lý do từ chối kê khai..."
+                  rows={3}
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-colors placeholder:text-slate-400 resize-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Chỉ tiêu cần kê khai lại <span className="text-xs font-normal text-slate-400">(không chọn = tất cả)</span>
+                </label>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {nhiemVu.chiTieu.map(ct => (
+                    <div key={ct} className={`rounded-lg border p-3 transition-colors ${ctDaChon[ct] ? 'border-orange-300 bg-orange-50' : 'border-slate-200 bg-slate-50'}`}>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={!!ctDaChon[ct]}
+                          onChange={(e) => setCtDaChon(prev => ({ ...prev, [ct]: e.target.checked }))}
+                          className="w-4 h-4 rounded border-slate-300 text-orange-500 focus:ring-orange-400"
+                        />
+                        <span className="text-xs font-bold text-blue-600">{ct}</span>
+                        <span className="text-xs text-slate-600 flex-1">{danhSachCT[ct]}</span>
+                      </label>
+                      {ctDaChon[ct] && (
+                        <div className="mt-2 ml-6">
+                          <input
+                            type="text"
+                            value={ghiChuCT[ct] || ''}
+                            onChange={(e) => setGhiChuCT(prev => ({ ...prev, [ct]: e.target.value }))}
+                            placeholder="Ghi chú cho CT này (không bắt buộc)..."
+                            className="w-full px-3 py-1.5 text-xs border border-orange-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-orange-400 placeholder:text-slate-400"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </div>

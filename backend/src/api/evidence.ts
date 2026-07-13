@@ -142,7 +142,6 @@ router.post('/', authMiddleware, upload.single('file'), asyncHandler(async (req,
 
 router.get('/ke-khai-ho/:keKhaiHoId', authMiddleware, asyncHandler(async (req, res) => {
   const keKhaiHoId = parseInt(req.params.keKhaiHoId)
-  // Kiem tra quyen truy cap ke khai ho truoc khi tra minh chung
   if (req.user.vai_tro !== 'xa') {
     const kk = await keKhaiHoRepo.timTheoId(keKhaiHoId)
     if (!kk) throw loi.khongThay('Khong tim thay ke khai ho')
@@ -153,7 +152,7 @@ router.get('/ke-khai-ho/:keKhaiHoId', authMiddleware, asyncHandler(async (req, r
       throw loi.camTruyCap('Khong the truy cap minh chung ngoai thon cua ban')
     }
   }
-  const rows = await minhChungRepo.layTheoKeKhaiHo(keKhaiHoId)
+  const rows = await minhChungRepo.layTheoTatCaPhienBan(keKhaiHoId)
   ok(res, rows)
 }))
 

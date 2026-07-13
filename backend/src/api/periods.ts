@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import * as dotKeKhaiRepo from '../repositories/dotKeKhaiRepo.js'
+import * as nguoiDungRepo from '../repositories/nguoiDungRepo.js'
 import { authMiddleware, requireRole } from '../middleware/auth.js'
 import { validateDotKeKhai, toPeriodResponse } from '../schema/dto.js'
 import { thongBaoTaoDot } from '../services/thongBaoService.js'
@@ -10,6 +11,11 @@ const router = Router()
 router.get('/', authMiddleware, asyncHandler(async (req, res) => {
   const { trang_thai } = req.query
   if (trang_thai === 'dang_mo') {
+    if (req.user.vai_tro === 'dan') {
+      const nd = await nguoiDungRepo.timTheoId(req.user.id)
+      const rows = await dotKeKhaiRepo.layDangMoChoDan(nd.created_at)
+      return ok(res, rows.map(toPeriodResponse))
+    }
     const rows = await dotKeKhaiRepo.layDangMo()
     return ok(res, rows.map(toPeriodResponse))
   }
