@@ -76,6 +76,50 @@ export async function traLaiKeKhai(id, nguoiDuyetId, lyDo, chiTieuTraLai?) {
   return result.rows[0]
 }
 
+export async function tienDoTatCaThon(dotId) {
+  const result = await query(
+    `SELECT t.id AS thon_id, t.ten_thon,
+      COUNT(hd.id) AS tong_ho,
+      COUNT(kk.id) FILTER (WHERE kk.trang_thai IS NOT NULL AND kk.trang_thai != 'chua_ke_khai') AS da_ke_khai,
+      COUNT(kk.id) FILTER (WHERE kk.trang_thai = 'da_duyet') AS da_duyet,
+      COUNT(kk.id) FILTER (WHERE kk.trang_thai = 'tra_lai') AS tra_lai
+    FROM thon t
+    LEFT JOIN ho_dan hd ON hd.thon_id = t.id AND hd.trang_thai = 'dang_cu_tru'
+    LEFT JOIN LATERAL (
+      SELECT id, trang_thai FROM ke_khai_ho WHERE ho_dan_id = hd.id AND dot_id = $1 ORDER BY phien_ban DESC LIMIT 1
+    ) kk ON TRUE
+    WHERE t.trang_thai = 'hoat_dong'
+    GROUP BY t.id, t.ten_thon
+    ORDER BY t.ten_thon`,
+    [dotId]
+  )
+  return result.rows
+}
+
+export async function tongHopTatCaThon(dotId) {
+  const result = await query(
+    `SELECT t.id AS thon_id, t.ten_thon,
+      COUNT(DISTINCT hd.id) AS ct01_tong_ho,
+      COALESCE(SUM(kk.ct02_tong_nhan_khau), 0) AS ct02_tong_nhan_khau,
+      COALESCE(SUM(kk.ct03_ho_ngheo), 0) AS ct03_ho_ngheo,
+      COALESCE(SUM(kk.ct04_ho_can_ngheo), 0) AS ct04_ho_can_ngheo,
+      COALESCE(SUM(kk.ct05_nguoi_co_cong), 0) AS ct05_nguoi_co_cong,
+      COALESCE(SUM(kk.ct06_bao_tro_xh), 0) AS ct06_bao_tro_xh,
+      COALESCE(SUM(kk.ct07_tre_duoi_16), 0) AS ct07_tre_duoi_16,
+      COALESCE(SUM(kk.ct08_tre_hoan_canh), 0) AS ct08_tre_hoan_canh,
+      COALESCE(SUM(kk.ct10_tuoi_lao_dong), 0) AS ct10_tuoi_lao_dong,
+      COALESCE(SUM(kk.ct11_tham_gia_bhyt), 0) AS ct11_tham_gia_bhyt
+    FROM thon t
+    LEFT JOIN ho_dan hd ON hd.thon_id = t.id AND hd.trang_thai = 'dang_cu_tru'
+    LEFT JOIN ke_khai_ho kk ON hd.id = kk.ho_dan_id AND kk.dot_id = $1 AND kk.trang_thai = 'da_duyet'
+    WHERE t.trang_thai = 'hoat_dong'
+    GROUP BY t.id, t.ten_thon
+    ORDER BY t.ten_thon`,
+    [dotId]
+  )
+  return result.rows
+}
+
 export async function tienDoThon(dotId, thonId) {
   const result = await query(
     `SELECT

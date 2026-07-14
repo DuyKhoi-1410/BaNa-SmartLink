@@ -43,12 +43,15 @@ export default function PopupDuyetKeKhai({ hienPopup, dongPopup, hoDan, nhiemVu,
     dongPopup()
   }
 
+  const ctDanNhap = nhiemVu.chiTieu.filter(ct => !['CT01','CT09','CT12','CT13','CT14'].includes(ct))
+
   const xacNhanTuChoi = async () => {
     if (!lyDoTuChoi.trim()) return
     const dsCTChon = Object.entries(ctDaChon)
       .filter(([, v]) => v)
       .map(([ma]) => ({ ma, ghiChu: ghiChuCT[ma]?.trim() || '' }))
-    await xuLyDuyet(hoDan.id, 'tu-choi', lyDoTuChoi.trim(), dsCTChon.length > 0 ? dsCTChon : undefined)
+    const dsGui = dsCTChon.length > 0 ? dsCTChon : ctDanNhap.map(ma => ({ ma, ghiChu: '' }))
+    await xuLyDuyet(hoDan.id, 'tu-choi', lyDoTuChoi.trim(), dsGui)
     dongPopup()
   }
 
@@ -163,11 +166,25 @@ export default function PopupDuyetKeKhai({ hienPopup, dongPopup, hoDan, nhiemVu,
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Chỉ tiêu cần kê khai lại <span className="text-xs font-normal text-slate-400">(không chọn = tất cả)</span>
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-semibold text-slate-700">
+                    Chỉ tiêu cần kê khai lại
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const tatCaDaChon = ctDanNhap.every(ct => ctDaChon[ct])
+                      const moi = {}
+                      ctDanNhap.forEach(ct => { moi[ct] = !tatCaDaChon })
+                      setCtDaChon(moi)
+                    }}
+                    className="text-xs font-medium text-orange-600 hover:text-orange-700 hover:bg-orange-50 px-2 py-1 rounded-md transition-colors"
+                  >
+                    {ctDanNhap.every(ct => ctDaChon[ct]) ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                  </button>
+                </div>
                 <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {nhiemVu.chiTieu.map(ct => (
+                  {ctDanNhap.map(ct => (
                     <div key={ct} className={`rounded-lg border p-3 transition-colors ${ctDaChon[ct] ? 'border-orange-300 bg-orange-50' : 'border-slate-200 bg-slate-50'}`}>
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input

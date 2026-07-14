@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import * as keKhaiService from '../services/keKhaiService.js'
+import * as keKhaiHoRepo from '../repositories/keKhaiHoRepo.js'
 import * as thonRepo from '../repositories/thonRepo.js'
 import { authMiddleware } from '../middleware/auth.js'
 import { xuatExcelTongHop } from '../services/xuatFileService.js'
@@ -14,12 +15,7 @@ router.get('/tien-do/:dotId', authMiddleware, asyncHandler(async (req, res) => {
     const tienDo = await keKhaiService.tienDoThon(dotId, parseInt(thon_id as string))
     return ok(res, tienDo)
   }
-  const thons = await thonRepo.layTatCa()
-  const results = []
-  for (const thon of thons) {
-    const tienDo = await keKhaiService.tienDoThon(dotId, thon.id)
-    results.push({ thon_id: thon.id, ten_thon: thon.ten_thon, ...tienDo })
-  }
+  const results = await keKhaiHoRepo.tienDoTatCaThon(dotId)
   ok(res, results)
 }))
 

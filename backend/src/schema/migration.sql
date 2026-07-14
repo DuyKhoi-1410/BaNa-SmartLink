@@ -253,3 +253,6 @@ CREATE INDEX idx_refresh_token_nguoi_dung ON refresh_token(nguoi_dung_id);
 CREATE INDEX idx_refresh_token_hash ON refresh_token(token_hash);
 CREATE INDEX idx_truy_cap_nguoi_dung ON nhat_ky_truy_cap(nguoi_dung_id);
 CREATE INDEX idx_truy_cap_bang ON nhat_ky_truy_cap(bang_lien_quan, ban_ghi_id, created_at);
+CREATE INDEX idx_ho_dan_thon_trang_thai ON ho_dan(thon_id, trang_thai);
+CREATE INDEX idx_ke_khai_ho_hodan_dot_phienban ON ke_khai_ho(ho_dan_id, dot_id, phien_ban DESC);
+CREATE INDEX idx_ke_khai_ho_dot_trang_thai ON ke_khai_ho(dot_id, trang_thai);

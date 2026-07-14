@@ -102,26 +102,27 @@ export default function TrangChuXa() {
         const homNay = new Date().toISOString().slice(0, 10)
         setSoNhiemVuHoatDong(periods.filter(p => p.ngay_ket_thuc >= homNay).length)
 
-        const tienDoPromises = periods.map(dot =>
-          api.get(`/reports/tien-do/${dot.id}`).catch(() => [])
-        )
-        const tongHopPromise = periods[0]
-          ? api.get(`/reports/tong-hop/${periods[0].id}`).catch(() => [])
-          : Promise.resolve([])
+        const dsBaoCao = periods.map(dot => ({
+          id: dot.id, ten: dot.ten_dot, ngayHetHan: dot.ngay_ket_thuc, soThonDaNop: 0, tongSoThon: 10,
+        }))
+        setDanhSachBaoCao(dsBaoCao)
 
-        const [tienDoResults, tongHopXa] = await Promise.all([
-          Promise.all(tienDoPromises),
-          tongHopPromise,
+        if (periods.length === 0) return
+
+        setBaoCaoChon(dsBaoCao[0].id)
+
+        const [tienDoAll, tongHopXa] = await Promise.all([
+          api.get(`/reports/tien-do/${periods[0].id}`).catch(() => []),
+          api.get(`/reports/tong-hop/${periods[0].id}`).catch(() => []),
         ])
 
-        const dsBaoCao = periods.map((dot, i) => {
-          const tienDoAll = tienDoResults[i]
-          const tongSoThon = tienDoAll.length || 10
+        if (tienDoAll.length > 0) {
+          const tongSoThon = tienDoAll.length
           const soThonDaNop = tienDoAll.filter(t => (parseInt(t.da_ke_khai) || 0) > 0).length
-          return { id: dot.id, ten: dot.ten_dot, ngayHetHan: dot.ngay_ket_thuc, soThonDaNop, tongSoThon }
-        })
-        setDanhSachBaoCao(dsBaoCao)
-        if (dsBaoCao.length > 0) setBaoCaoChon(dsBaoCao[0].id)
+          setDanhSachBaoCao(prev => prev.map(bc =>
+            bc.id === periods[0].id ? { ...bc, soThonDaNop, tongSoThon } : bc
+          ))
+        }
 
         if (tongHopXa.length > 0) {
           const duLieuThon = {}
@@ -150,6 +151,20 @@ export default function TrangChuXa() {
     }
     taiDuLieu()
   }, [])
+
+  useEffect(() => {
+    if (!baoCaoChon) return
+    api.get(`/reports/tien-do/${baoCaoChon}`)
+      .then(tienDoAll => {
+        if (!tienDoAll?.length) return
+        const tongSoThon = tienDoAll.length
+        const soThonDaNop = tienDoAll.filter(t => (parseInt(t.da_ke_khai) || 0) > 0).length
+        setDanhSachBaoCao(prev => prev.map(bc =>
+          bc.id === baoCaoChon ? { ...bc, soThonDaNop, tongSoThon } : bc
+        ))
+      })
+      .catch(() => {})
+  }, [baoCaoChon])
 
   const duLieuBieuDo = tongHopCT
 

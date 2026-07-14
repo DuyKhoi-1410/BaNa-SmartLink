@@ -156,6 +156,7 @@ export default function KeKhai() {
             ghiChuChung: kk?.ly_do_tra_lai || '',
             danhSachTraLai: kk?.chi_tieu_tra_lai || [],
             keKhaiId: kk?.id,
+            chiTieu: dot.chi_tieu || [],
           }
         })
         setDanhSachDot(dsDot)
@@ -222,7 +223,7 @@ export default function KeKhai() {
       const duLieuMoi = { ...duLieuCuaDot }
       const dsCTLai = (dot.danhSachTraLai && dot.danhSachTraLai.length > 0)
         ? dot.danhSachTraLai
-        : DANH_SACH_CT.map(ct => ({ ma: ct.ma, ghiChu: '' }))
+        : (dot.chiTieu || []).filter(ct => ct !== 'CT01').map(ma => ({ ma, ghiChu: '' }))
       dsCTLai.forEach(item => {
         const ct = DANH_SACH_CT.find(c => c.ma === item.ma)
         if (ct) duLieuMoi[item.ma] = ct.loaiNhap === 'co-khong' ? null : ''
