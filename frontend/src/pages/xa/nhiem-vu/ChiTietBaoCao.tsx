@@ -69,10 +69,15 @@ export default function ChiTietBaoCao({ baoCao, danhSachThon, quayLai }) {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      const disposition = res.headers.get('Content-Disposition')
-      const fileName = disposition
-        ? decodeURIComponent(disposition.split('filename="')[1]?.replace('"', '') || 'BaoCao.xlsx')
-        : 'BaoCao.xlsx'
+      const disposition = res.headers.get('Content-Disposition') || ''
+      let fileName = 'BaoCao.xlsx'
+      const utf8Match = disposition.match(/filename\*=UTF-8''(.+?)(?:;|$)/)
+      if (utf8Match) {
+        fileName = decodeURIComponent(utf8Match[1].trim())
+      } else {
+        const match = disposition.match(/filename="?(.+?)"?(?:;|$)/)
+        if (match) fileName = decodeURIComponent(match[1].trim())
+      }
       a.download = fileName
       document.body.appendChild(a)
       a.click()

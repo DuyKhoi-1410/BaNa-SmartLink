@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import * as keKhaiService from '../services/keKhaiService.js'
 import * as keKhaiThonRepo from '../repositories/keKhaiThonRepo.js'
+import * as dotKeKhaiRepo from '../repositories/dotKeKhaiRepo.js'
 import { authMiddleware, requireRole } from '../middleware/auth.js'
 import { validateKeKhaiThon, validateTongHopThon, sanitizeKeKhaiThonFields } from '../schema/dto.js'
 import { thongBaoThonNopXa } from '../services/thongBaoService.js'
@@ -33,7 +34,8 @@ router.patch('/:dotId/:thonId/nop-xa', authMiddleware, requireRole('thon'), asyn
   const thonId = parseInt(req.params.thonId)
   if (thonId !== req.user.thon_id) throw loi.camTruyCap('Chi duoc nop bao cao cua thon minh')
   const tongHop = await keKhaiService.tongHopThon(dotId, thonId)
-  const errTH = validateTongHopThon(tongHop)
+  const dotKeKhai = await dotKeKhaiRepo.timTheoId(dotId)
+  const errTH = validateTongHopThon(tongHop, dotKeKhai?.chi_tieu)
   if (errTH.length) throw loi.kiemTra('Du lieu tong hop thon chua hop le, vui long kiem tra lai', errTH)
   const data = await keKhaiService.nopThonLenXa(dotId, thonId)
   if (!data) throw loi.khongThay('Khong tim thay ke khai thon')

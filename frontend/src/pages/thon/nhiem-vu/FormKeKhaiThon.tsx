@@ -53,23 +53,11 @@ export default function FormKeKhaiThon({ hienPopup, dongPopup, nhiemVu, duLieuTh
     )
   }
 
-  const soHoDaDuyet = thongKe?.daDuyet ?? 0
-  const tongNhanKhau = tongHopCT?.CT02 ?? 0
-
   const kiemTraGiaTri = (ct, giaTri) => {
     if (giaTri === '' || giaTri === undefined) return 'Vui lòng nhập số liệu'
     const so = parseInt(giaTri)
     if (isNaN(so)) return 'Giá trị phải là số'
     if (so < 0) return 'Giá trị không được nhỏ hơn 0'
-    if (ct === 'CT09' && soHoDaDuyet > 0 && so > soHoDaDuyet) {
-      return `Không được vượt quá số hộ đã duyệt (${soHoDaDuyet})`
-    }
-    if (ct === 'CT12' && tongNhanKhau > 0 && so > tongNhanKhau) {
-      return `Không được vượt quá tổng nhân khẩu (${tongNhanKhau})`
-    }
-    if (ct === 'CT13' && tongNhanKhau > 0 && so > tongNhanKhau) {
-      return `Không được vượt quá tổng nhân khẩu (${tongNhanKhau})`
-    }
     return null
   }
 
@@ -132,10 +120,10 @@ export default function FormKeKhaiThon({ hienPopup, dongPopup, nhiemVu, duLieuTh
             {danhSachCTCanNhap.map(ct => {
               const loi = loiValidation[ct]
               const goiY = {
-                CT09: soHoDaDuyet > 0 ? `Không vượt quá ${soHoDaDuyet} hộ đã duyệt` : 'Số hộ đạt danh hiệu trong thôn',
-                CT12: tongNhanKhau > 0 ? `Không vượt quá ${tongNhanKhau} nhân khẩu` : 'Không vượt quá tổng nhân khẩu',
-                CT13: tongNhanKhau > 0 ? `Không vượt quá ${tongNhanKhau} nhân khẩu` : 'Số người được hướng dẫn',
-                CT14: 'Giá trị lớn hơn hoặc bằng 0',
+                CT09: 'Số hộ đạt danh hiệu trong thôn',
+                CT12: 'Số thành viên Tổ CNSC trong thôn',
+                CT13: 'Số người được hướng dẫn DVC trực tuyến',
+                CT14: 'Số vụ bạo lực gia đình',
               }
               return (
                 <div key={ct}>

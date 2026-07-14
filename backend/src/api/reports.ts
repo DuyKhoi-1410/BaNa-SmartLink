@@ -40,7 +40,7 @@ router.get('/xuat-excel/:dotId', authMiddleware, asyncHandler(async (req, res) =
   const dotId = parseInt(req.params.dotId)
   const { workbook, tenFile } = await xuatExcelTongHop(dotId)
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-  res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(tenFile)}"`)
+  res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(tenFile)}"; filename*=UTF-8''${encodeURIComponent(tenFile)}`)
   await workbook.xlsx.write(res)
   res.end()
 }))

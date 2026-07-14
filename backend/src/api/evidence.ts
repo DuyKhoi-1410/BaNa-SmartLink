@@ -2,42 +2,26 @@ import { Router } from 'express'
 import multer from 'multer'
 import path from 'path'
 import fs from 'fs'
-import { fileURLToPath } from 'url'
 import { authMiddleware } from '../middleware/auth.js'
 import * as minhChungRepo from '../repositories/minhChungRepo.js'
 import * as keKhaiHoRepo from '../repositories/keKhaiHoRepo.js'
 import { query } from '../repositories/db.js'
 import { asyncHandler, ok, loi } from '../utils/response.js'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads')
+const SUPABASE_URL = process.env.SUPABASE_URL
+const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY
+const BUCKET = 'minh-chung'
 
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true })
-}
+const TEMP_DIR = path.join(process.cwd(), 'uploads', '_temp')
+if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true })
 
 const CT_DAN = ['CT02', 'CT03', 'CT04', 'CT05', 'CT06', 'CT08', 'CT11']
 const CT_THON = ['CT09', 'CT12', 'CT13', 'CT14']
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'application/pdf']
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 
-const TEMP_DIR = path.join(UPLOADS_DIR, '_temp')
-if (!fs.existsSync(TEMP_DIR)) {
-  fs.mkdirSync(TEMP_DIR, { recursive: true })
-}
-
-const storage = multer.diskStorage({
-  destination(req, file, cb) {
-    cb(null, TEMP_DIR)
-  },
-  filename(req, file, cb) {
-    const ext = path.extname(file.originalname) || '.jpg'
-    cb(null, `${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`)
-  },
-})
-
 const upload = multer({
-  storage,
+  dest: TEMP_DIR,
   limits: { fileSize: MAX_FILE_SIZE },
   fileFilter(req, file, cb) {
     if (!ALLOWED_TYPES.includes(file.mimetype)) {
@@ -47,19 +31,44 @@ const upload = multer({
   },
 })
 
+async function uploadToStorage(filePath: string, storagePath: string, mimetype: string): Promise<string> {
+  const fileBuffer = fs.readFileSync(filePath)
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${storagePath}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': mimetype,
+      'x-upsert': 'true',
+    },
+    body: fileBuffer,
+  })
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`Upload that bai: ${err}`)
+  }
+  return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${storagePath}`
+}
+
+async function deleteFromStorage(fileUrl: string) {
+  const prefix = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/`
+  if (!fileUrl.startsWith(prefix)) return
+  const storagePath = fileUrl.slice(prefix.length)
+  await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${storagePath}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${SUPABASE_KEY}` },
+  })
+}
+
 const router = Router()
 
-// Xoa file vat ly tren dia (file_url dang /uploads/...)
-function xoaFileVatLy(fileUrl: string) {
+// Xoa file: ho tro ca Supabase URL moi va /uploads/ cu
+async function xoaFile(fileUrl: string) {
   try {
-    if (!fileUrl?.startsWith('/uploads/')) return
-    const relative = fileUrl.replace(/^\/uploads\//, '')
-    const filePath = path.join(UPLOADS_DIR, relative)
-    // Chan path traversal
-    if (!filePath.startsWith(UPLOADS_DIR)) return
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath)
+    if (fileUrl?.startsWith(`${SUPABASE_URL}/`)) {
+      await deleteFromStorage(fileUrl)
+    }
   } catch (e: any) {
-    console.error('[evidence] Khong xoa duoc file vat ly:', e.message)
+    console.error('[evidence] Khong xoa duoc file:', e.message)
   }
 }
 
@@ -106,25 +115,21 @@ router.post('/', authMiddleware, upload.single('file'), asyncHandler(async (req,
       if (check.rows.length === 0) throw loi.khongThay('Khong tim thay ke khai thon')
     }
 
-    const finalDir = ke_khai_ho_id
-      ? path.join(UPLOADS_DIR, 'ho', String(ke_khai_ho_id))
-      : path.join(UPLOADS_DIR, 'thon', String(ke_khai_thon_id))
-    fs.mkdirSync(finalDir, { recursive: true })
+    const fileName = Buffer.from(req.file.originalname, 'latin1').toString('utf8')
+    const ext = path.extname(fileName) || '.jpg'
+    const folder = ke_khai_ho_id ? `ho-${ke_khai_ho_id}` : `thon-${ke_khai_thon_id}`
+    const storagePath = `${folder}/${ma_chi_tieu.toUpperCase()}_${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`
 
-    const ext = path.extname(req.file.originalname) || '.jpg'
-    const finalName = `${ma_chi_tieu.toUpperCase()}_${Date.now()}${ext}`
-    const finalPath = path.join(finalDir, finalName)
-    fs.renameSync(req.file.path, finalPath)
+    const fileUrl = await uploadToStorage(req.file.path, storagePath, req.file.mimetype)
 
-    const relativePath = path.relative(UPLOADS_DIR, finalPath).replace(/\\/g, '/')
-    const fileUrl = `/uploads/${relativePath}`
+    fs.unlinkSync(req.file.path)
 
     const minhChung = await minhChungRepo.taoMoi({
       ke_khai_ho_id: ke_khai_ho_id ? parseInt(ke_khai_ho_id) : null,
       ke_khai_thon_id: ke_khai_thon_id ? parseInt(ke_khai_thon_id) : null,
       ma_chi_tieu: ma_chi_tieu.toUpperCase(),
       file_url: fileUrl,
-      file_name: req.file.originalname,
+      file_name: fileName,
       file_size: req.file.size,
       loai_file: req.file.mimetype,
       nguoi_upload_id: req.user.id,
@@ -152,7 +157,7 @@ router.get('/ke-khai-ho/:keKhaiHoId', authMiddleware, asyncHandler(async (req, r
       throw loi.camTruyCap('Khong the truy cap minh chung ngoai thon cua ban')
     }
   }
-  const rows = await minhChungRepo.layTheoTatCaPhienBan(keKhaiHoId)
+  const rows = await minhChungRepo.layTheoPhienBanMoiNhat(keKhaiHoId)
   ok(res, rows)
 }))
 
@@ -196,7 +201,7 @@ router.delete('/:id', authMiddleware, asyncHandler(async (req, res) => {
 
   // Xoa mem trong DB (giu lich su) + xoa file vat ly
   await minhChungRepo.xoa(mc.id, req.user.id)
-  xoaFileVatLy(mc.file_url)
+  await xoaFile(mc.file_url)
 
   ok(res, { message: 'Da xoa minh chung' })
 }))

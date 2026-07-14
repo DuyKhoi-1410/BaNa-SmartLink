@@ -85,8 +85,18 @@ export default function PopupDuyetKeKhai({ hienPopup, dongPopup, hoDan, nhiemVu,
             </span>
           </div>
 
+          {hoDan.ghiChu && (
+            <div className="mb-4 px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-xs font-semibold text-blue-700 mb-1 flex items-center gap-1">
+                <MessageSquare size={12} />
+                Ghi chú từ hộ dân
+              </p>
+              <p className="text-sm text-blue-600">{hoDan.ghiChu}</p>
+            </div>
+          )}
+
           <div className="space-y-2">
-            {nhiemVu.chiTieu.map(ct => {
+            {ctDanNhap.map(ct => {
               const dsMC = minhChungTheoCT(ct)
               return (
                 <div key={ct} className="rounded-xl border border-slate-200 bg-slate-50/50 overflow-hidden">
@@ -96,7 +106,7 @@ export default function PopupDuyetKeKhai({ hienPopup, dongPopup, hoDan, nhiemVu,
                       <span className="text-xs text-slate-500">{danhSachCT[ct]}</span>
                     </div>
                     <span className="text-base font-bold text-slate-800 ml-3">
-                      {(hoDan.duLieuCT?.[ct] ?? 0).toLocaleString('vi-VN')}
+                      {['CT03','CT04'].includes(ct) ? ((hoDan.duLieuCT?.[ct] ?? 0) === 1 ? 'Có' : 'Không') : (hoDan.duLieuCT?.[ct] ?? 0).toLocaleString('vi-VN')}
                     </span>
                   </div>
                   {dsMC.length > 0 && (

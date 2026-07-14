@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FileText, Calendar, Clock, CheckCircle2, AlertCircle, Zap, CalendarClock, X, Users, Heart, Shield, Baby, Briefcase, Send, Info, Upload, ImagePlus, Trash2, ArrowLeft, RotateCcw, Pencil, ChevronRight, Loader2 } from 'lucide-react'
+import { FileText, Calendar, Clock, CheckCircle2, AlertCircle, Zap, CalendarClock, X, Users, Heart, Shield, Baby, Briefcase, Send, Info, Upload, ImagePlus, Trash2, ArrowLeft, RotateCcw, Pencil, ChevronRight, Loader2, MessageSquare } from 'lucide-react'
 import { api } from '../../lib/api'
 import Toast from '../../components/Toast'
 
@@ -122,6 +122,7 @@ export default function KeKhai() {
   const [hienToast, setHienToast] = useState(false)
   const [dangKeKhaiLai, setDangKeKhaiLai] = useState(false)
   const [danhSachCTCanLai, setDanhSachCTCanLai] = useState<any[]>([])
+  const [ghiChu, setGhiChu] = useState('')
   const fileInputRefs = useRef({})
   const navigate = useNavigate()
 
@@ -169,12 +170,20 @@ export default function KeKhai() {
     taiDuLieu()
   }, [])
 
-  const DANH_SACH_BUOC = [
+  const chiTieuDot = dotDangChon?.chiTieu || []
+  const ctCuaDot = DANH_SACH_CT.filter(ct => chiTieuDot.includes(ct.ma))
+
+  const TAT_CA_BUOC = [
     { tieuDe: 'Nhân khẩu', moTa: 'Tổng số người trong hộ', danhSachMa: ['CT02'] },
     { tieuDe: 'Hộ nghèo', moTa: 'Tình trạng nghèo / cận nghèo', danhSachMa: ['CT03', 'CT04'] },
     { tieuDe: 'Chính sách', moTa: 'Người có công & bảo trợ xã hội', danhSachMa: ['CT05', 'CT06'] },
     { tieuDe: 'Trẻ em', moTa: 'Trẻ em dưới 16 tuổi', danhSachMa: ['CT07', 'CT08'] },
     { tieuDe: 'Lao động & BHYT', moTa: 'Người trong tuổi lao động & bảo hiểm', danhSachMa: ['CT10', 'CT11'] },
+  ]
+  const DANH_SACH_BUOC = [
+    ...TAT_CA_BUOC
+      .map(b => ({ ...b, danhSachMa: b.danhSachMa.filter(ma => chiTieuDot.includes(ma)) }))
+      .filter(b => b.danhSachMa.length > 0),
     { tieuDe: 'Xem lại & Nộp', moTa: 'Kiểm tra lần cuối trước khi gửi', danhSachMa: [] },
   ]
 
@@ -253,11 +262,11 @@ export default function KeKhai() {
         setDangKeKhaiLai(false)
         setDanhSachCTCanLai([])
         const banDauTT = {}
-        DANH_SACH_CT.forEach(ct => { banDauTT[ct.ma] = 'giu' })
+        ctCuaDot.forEach(ct => { banDauTT[ct.ma] = 'giu' })
         setTrangThaiCT(banDauTT)
       } else {
         const giaTriBanDau = {}
-        DANH_SACH_CT.forEach(ct => { giaTriBanDau[ct.ma] = ct.loaiNhap === 'co-khong' ? null : '' })
+        ctCuaDot.forEach(ct => { giaTriBanDau[ct.ma] = ct.loaiNhap === 'co-khong' ? null : '' })
         setDuLieuCT(giaTriBanDau)
         setDangXemLai(false)
         setChiXem(false)
@@ -272,6 +281,7 @@ export default function KeKhai() {
     setBuocHienTai(0)
     setDaChot({})
     setDangChot({})
+    setGhiChu('')
     setMoPopup(true)
   }
 
@@ -353,7 +363,7 @@ export default function KeKhai() {
 
   const kiemTraDuLieu = () => {
     const loi: Record<string, any> = {}
-    DANH_SACH_CT.forEach(ct => {
+    ctCuaDot.forEach(ct => {
       if (dangXemLai && trangThaiCT[ct.ma] === 'giu') return
       if (dangKeKhaiLai && !danhSachCTCanLai.find(item => item.ma === ct.ma)) return
       const val = duLieuCT[ct.ma]
@@ -378,16 +388,17 @@ export default function KeKhai() {
       return parseInt(duLieuCT[ma], 10) || 0
     }
 
-    if (!loi.CT02 && so('CT02') < 1) loi.CT02 = 'Mỗi hộ phải có ít nhất 1 nhân khẩu (chủ hộ)'
-    if (!loi.CT04 && !loi.CT03 && so('CT03') === 1 && so('CT04') === 1) loi.CT04 = 'Hộ không thể vừa nghèo vừa cận nghèo'
-    if (!loi.CT05 && !loi.CT02 && so('CT05') > so('CT02')) loi.CT05 = 'Số người có công không thể nhiều hơn tổng nhân khẩu'
-    if (!loi.CT06 && !loi.CT02 && so('CT06') > so('CT02')) loi.CT06 = 'Số đối tượng bảo trợ xã hội không thể nhiều hơn tổng nhân khẩu'
-    if (!loi.CT07 && !loi.CT02 && so('CT07') > so('CT02')) loi.CT07 = 'Số trẻ em không thể nhiều hơn tổng nhân khẩu'
-    if (!loi.CT08 && !loi.CT07 && so('CT08') > so('CT07')) loi.CT08 = 'Trẻ em hoàn cảnh đặc biệt không thể nhiều hơn tổng trẻ em'
-    if (!loi.CT10 && !loi.CT02 && so('CT10') > so('CT02')) loi.CT10 = 'Số người trong độ tuổi lao động không thể nhiều hơn tổng nhân khẩu'
-    if (!loi.CT11 && !loi.CT02 && so('CT11') > so('CT02')) loi.CT11 = 'Số người tham gia BHYT không thể nhiều hơn tổng nhân khẩu'
+    const coCT = (ma: string) => chiTieuDot.includes(ma)
+    if (coCT('CT02') && !loi.CT02 && so('CT02') < 1) loi.CT02 = 'Mỗi hộ phải có ít nhất 1 nhân khẩu (chủ hộ)'
+    if (coCT('CT03') && coCT('CT04') && !loi.CT04 && !loi.CT03 && so('CT03') === 1 && so('CT04') === 1) loi.CT04 = 'Hộ không thể vừa nghèo vừa cận nghèo'
+    if (coCT('CT05') && coCT('CT02') && !loi.CT05 && !loi.CT02 && so('CT05') > so('CT02')) loi.CT05 = 'Số người có công không thể nhiều hơn tổng nhân khẩu'
+    if (coCT('CT06') && coCT('CT02') && !loi.CT06 && !loi.CT02 && so('CT06') > so('CT02')) loi.CT06 = 'Số đối tượng bảo trợ xã hội không thể nhiều hơn tổng nhân khẩu'
+    if (coCT('CT07') && coCT('CT02') && !loi.CT07 && !loi.CT02 && so('CT07') > so('CT02')) loi.CT07 = 'Số trẻ em không thể nhiều hơn tổng nhân khẩu'
+    if (coCT('CT08') && coCT('CT07') && !loi.CT08 && !loi.CT07 && so('CT08') > so('CT07')) loi.CT08 = 'Trẻ em hoàn cảnh đặc biệt không thể nhiều hơn tổng trẻ em'
+    if (coCT('CT10') && coCT('CT02') && !loi.CT10 && !loi.CT02 && so('CT10') > so('CT02')) loi.CT10 = 'Số người trong độ tuổi lao động không thể nhiều hơn tổng nhân khẩu'
+    if (coCT('CT11') && coCT('CT02') && !loi.CT11 && !loi.CT02 && so('CT11') > so('CT02')) loi.CT11 = 'Số người tham gia BHYT không thể nhiều hơn tổng nhân khẩu'
 
-    DANH_SACH_CT.forEach(ct => {
+    ctCuaDot.forEach(ct => {
       if (dangXemLai && trangThaiCT[ct.ma] === 'giu') return
       if (dangKeKhaiLai && !danhSachCTCanLai.find(item => item.ma === ct.ma)) return
       if (!ct.minhChung) return
@@ -429,19 +440,19 @@ export default function KeKhai() {
 
     if (buoc.danhSachMa.includes('CT02') && !loi.CT02 && so('CT02') < 1)
       loi.CT02 = 'Mỗi hộ phải có ít nhất 1 nhân khẩu (chủ hộ)'
-    if (buoc.danhSachMa.includes('CT04') && !loi.CT04 && !loi.CT03 && so('CT03') === 1 && so('CT04') === 1)
+    if (buoc.danhSachMa.includes('CT04') && buoc.danhSachMa.includes('CT03') && !loi.CT04 && !loi.CT03 && so('CT03') === 1 && so('CT04') === 1)
       loi.CT04 = 'Hộ không thể vừa nghèo vừa cận nghèo'
-    if (buoc.danhSachMa.includes('CT05') && !loi.CT05 && so('CT05') > so('CT02'))
+    if (buoc.danhSachMa.includes('CT05') && chiTieuDot.includes('CT02') && !loi.CT05 && so('CT05') > so('CT02'))
       loi.CT05 = 'Số người có công không thể nhiều hơn tổng nhân khẩu'
-    if (buoc.danhSachMa.includes('CT06') && !loi.CT06 && so('CT06') > so('CT02'))
+    if (buoc.danhSachMa.includes('CT06') && chiTieuDot.includes('CT02') && !loi.CT06 && so('CT06') > so('CT02'))
       loi.CT06 = 'Số đối tượng bảo trợ xã hội không thể nhiều hơn tổng nhân khẩu'
-    if (buoc.danhSachMa.includes('CT07') && !loi.CT07 && so('CT07') > so('CT02'))
+    if (buoc.danhSachMa.includes('CT07') && chiTieuDot.includes('CT02') && !loi.CT07 && so('CT07') > so('CT02'))
       loi.CT07 = 'Số trẻ em không thể nhiều hơn tổng nhân khẩu'
-    if (buoc.danhSachMa.includes('CT08') && !loi.CT08 && so('CT08') > so('CT07'))
+    if (buoc.danhSachMa.includes('CT08') && chiTieuDot.includes('CT07') && !loi.CT08 && so('CT08') > so('CT07'))
       loi.CT08 = 'Trẻ em hoàn cảnh đặc biệt không thể nhiều hơn tổng trẻ em'
-    if (buoc.danhSachMa.includes('CT10') && !loi.CT10 && so('CT10') > so('CT02'))
+    if (buoc.danhSachMa.includes('CT10') && chiTieuDot.includes('CT02') && !loi.CT10 && so('CT10') > so('CT02'))
       loi.CT10 = 'Số người trong độ tuổi lao động không thể nhiều hơn tổng nhân khẩu'
-    if (buoc.danhSachMa.includes('CT11') && !loi.CT11 && so('CT11') > so('CT02'))
+    if (buoc.danhSachMa.includes('CT11') && chiTieuDot.includes('CT02') && !loi.CT11 && so('CT11') > so('CT02'))
       loi.CT11 = 'Số người tham gia BHYT không thể nhiều hơn tổng nhân khẩu'
 
     buoc.danhSachMa.forEach(ma => {
@@ -498,6 +509,7 @@ export default function KeKhai() {
     setDangNop(true)
     try {
       const so = (ma) => {
+        if (!chiTieuDot.includes(ma)) return null
         const ct = DANH_SACH_CT.find(c => c.ma === ma)
         if (ct && ct.loaiNhap === 'co-khong') return duLieuCT[ma] === true ? 1 : 0
         return parseInt(duLieuCT[ma], 10) || 0
@@ -515,6 +527,7 @@ export default function KeKhai() {
         ct08_tre_hoan_canh: so('CT08'),
         ct10_tuoi_lao_dong: so('CT10'),
         ct11_tham_gia_bhyt: so('CT11'),
+        ghi_chu: ghiChu.trim() || null,
       }
 
       const keKhaiMoi = await api.post('/declarations', body)
@@ -560,7 +573,7 @@ export default function KeKhai() {
 
   const danhSachCTDaSua = () => {
     if (!dangXemLai || Object.keys(duLieuGoc).length === 0) return []
-    return DANH_SACH_CT.filter(ct => duLieuCT[ct.ma] !== duLieuGoc[ct.ma])
+    return ctCuaDot.filter(ct => duLieuCT[ct.ma] !== duLieuGoc[ct.ma])
   }
 
   const danhSachDaLoc = [...danhSachDot]
@@ -906,15 +919,15 @@ export default function KeKhai() {
         <div className="mb-5 p-4 bg-white rounded-xl border border-slate-200">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-slate-700">Tiến trình kê khai</span>
-            <span className="text-sm font-bold text-blue-600">{Object.keys(daChot).length}/{DANH_SACH_CT.length}</span>
+            <span className="text-sm font-bold text-blue-600">{Object.keys(daChot).length}/{ctCuaDot.length}</span>
           </div>
           <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full transition-all duration-500 ease-out"
-              style={{ width: `${(Object.keys(daChot).length / DANH_SACH_CT.length) * 100}%` }}
+              style={{ width: `${(Object.keys(daChot).length / ctCuaDot.length) * 100}%` }}
             />
           </div>
-          {Object.keys(daChot).length === DANH_SACH_CT.length && (
+          {Object.keys(daChot).length === ctCuaDot.length && (
             <p className="mt-2 text-xs text-emerald-600 font-medium flex items-center gap-1">
               <CheckCircle2 size={13} />
               Đã nhập đủ! Bấm "Nộp kê khai" bên dưới để hoàn tất.
@@ -925,7 +938,7 @@ export default function KeKhai() {
 
       {/* Form nhập liệu / xem lại */}
       {(chiXem || dangXemLai || !dangXemLai) && <div className="space-y-4 mb-6">
-        {DANH_SACH_CT.map((ct) => {
+        {ctCuaDot.map((ct) => {
           const dangGiu = dangXemLai && trangThaiCT[ct.ma] === 'giu'
           const dangSua = dangXemLai && trangThaiCT[ct.ma] === 'doi'
           const ctCanLai = danhSachCTCanLai.find(item => item.ma === ct.ma)
@@ -1198,7 +1211,7 @@ export default function KeKhai() {
 
       {/* Tổng kết thay đổi */}
       {dangXemLai && Object.keys(duLieuGoc).length > 0 && (() => {
-        const soDaSua = DANH_SACH_CT.filter(ct => duLieuCT[ct.ma] !== duLieuGoc[ct.ma]).length
+        const soDaSua = ctCuaDot.filter(ct => duLieuCT[ct.ma] !== duLieuGoc[ct.ma]).length
         return soDaSua > 0 ? (
           <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2">
             <Pencil size={16} className="text-amber-600 flex-shrink-0" />
@@ -1213,6 +1226,28 @@ export default function KeKhai() {
           </div>
         )
       })()}
+
+      {/* Ghi chú cho thôn trưởng */}
+      {!chiXem && (
+        <div className="mb-4 p-4 bg-white rounded-xl border border-slate-200">
+          <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-1.5">
+            <MessageSquare size={14} className="text-blue-500" />
+            Ghi chú cho thôn trưởng
+            <span className="text-xs font-normal text-slate-400">(không bắt buộc)</span>
+          </label>
+          <textarea
+            value={ghiChu}
+            onChange={(e) => setGhiChu(e.target.value)}
+            placeholder="VD: Đã cập nhật lại CT03, xin thôn trưởng kiểm tra giúp..."
+            rows={2}
+            maxLength={500}
+            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-colors placeholder:text-slate-400 resize-none"
+          />
+          {ghiChu.length > 0 && (
+            <p className="text-xs text-slate-400 mt-1 text-right">{ghiChu.length}/500</p>
+          )}
+        </div>
+      )}
 
       {/* Footer */}
       {chiXem ? (
@@ -1301,9 +1336,9 @@ export default function KeKhai() {
                     <div key={ct.ma} className="flex items-center gap-2 p-2 bg-amber-50 rounded-lg border border-amber-100">
                       <span className={`text-xs font-bold px-1.5 py-0.5 rounded bg-${ct.mau}-100 text-${ct.mau}-700`}>{ct.ma}</span>
                       <span className="text-xs text-slate-700 flex-1">{ct.ten}</span>
-                      <span className="text-xs text-slate-400">{String(duLieuGoc[ct.ma] ?? '—')}</span>
+                      <span className="text-xs text-slate-400">{ct.loaiNhap === 'co-khong' ? (duLieuGoc[ct.ma] === true ? 'Có' : duLieuGoc[ct.ma] === false ? 'Không' : '—') : String(duLieuGoc[ct.ma] ?? '—')}</span>
                       <span className="text-xs text-slate-400">→</span>
-                      <span className="text-xs font-semibold text-amber-700">{String(duLieuCT[ct.ma] ?? '—')}</span>
+                      <span className="text-xs font-semibold text-amber-700">{ct.loaiNhap === 'co-khong' ? (duLieuCT[ct.ma] === true ? 'Có' : duLieuCT[ct.ma] === false ? 'Không' : '—') : String(duLieuCT[ct.ma] ?? '—')}</span>
                     </div>
                   ))}
                 </div>

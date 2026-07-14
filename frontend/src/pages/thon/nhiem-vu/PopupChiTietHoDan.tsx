@@ -51,7 +51,9 @@ export default function PopupChiTietHoDan({ hienPopup, dongPopup, nhiemVu, danhS
               </tr>
             </thead>
             <tbody>
-              {nhiemVu.chiTieu.map((ct, idx) => (
+              {nhiemVu.chiTieu.filter(ct => !['CT09','CT12','CT13','CT14'].includes(ct)).map((ct, idx) => {
+                const laCT01 = ct === 'CT01'
+                return (
                 <tr key={ct} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'} hover:bg-blue-50/40 transition-colors`}>
                   <td className={`px-4 py-3 border-b border-slate-100 sticky left-0 z-10 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
                     <span className="font-bold text-blue-600 mr-2">{ct}</span>
@@ -64,9 +66,11 @@ export default function PopupChiTietHoDan({ hienPopup, dongPopup, nhiemVu, danhS
                   </td>
                   {danhSachHo.map((ho, i) => (
                     <td key={i} className="text-center px-3 py-3 border-b border-slate-100">
-                      {ho.daNop ? (
+                      {laCT01 ? (
+                        <span className="text-slate-300">—</span>
+                      ) : ho.daNop ? (
                         <span className="font-semibold text-slate-700">
-                          {(ho.duLieuCT?.[ct] ?? 0).toLocaleString('vi-VN')}
+                          {['CT03','CT04'].includes(ct) ? ((ho.duLieuCT?.[ct] ?? 0) === 1 ? 'Có' : 'Không') : (ho.duLieuCT?.[ct] ?? 0).toLocaleString('vi-VN')}
                         </span>
                       ) : (
                         <span className="text-slate-300">—</span>
@@ -74,7 +78,8 @@ export default function PopupChiTietHoDan({ hienPopup, dongPopup, nhiemVu, danhS
                     </td>
                   ))}
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>

@@ -44,6 +44,29 @@ export async function thuHoiTatCaCuaNguoiDung(nguoiDungId: number): Promise<void
   await query(`UPDATE refresh_token SET da_thu_hoi = TRUE WHERE nguoi_dung_id = $1 AND da_thu_hoi = FALSE`, [nguoiDungId])
 }
 
+export async function layPhienHoatDong(nguoiDungId: number): Promise<RefreshTokenRow[]> {
+  const result = await query(
+    `SELECT id, token_hash, user_agent, ip_address, created_at FROM refresh_token WHERE nguoi_dung_id = $1 AND da_thu_hoi = FALSE AND het_han > NOW() ORDER BY created_at DESC`,
+    [nguoiDungId]
+  )
+  return result.rows
+}
+
+export async function thuHoiTheoIdVaNguoiDung(id: number, nguoiDungId: number): Promise<boolean> {
+  const result = await query(
+    `UPDATE refresh_token SET da_thu_hoi = TRUE WHERE id = $1 AND nguoi_dung_id = $2 AND da_thu_hoi = FALSE RETURNING id`,
+    [id, nguoiDungId]
+  )
+  return result.rows.length > 0
+}
+
+export async function thuHoiTatCaTru(nguoiDungId: number, giuLaiId: number): Promise<void> {
+  await query(
+    `UPDATE refresh_token SET da_thu_hoi = TRUE WHERE nguoi_dung_id = $1 AND id != $2 AND da_thu_hoi = FALSE`,
+    [nguoiDungId, giuLaiId]
+  )
+}
+
 // Don rac token het han / da thu hoi
 export async function donRac(): Promise<void> {
   await query(`DELETE FROM refresh_token WHERE het_han < NOW() OR da_thu_hoi = TRUE`)

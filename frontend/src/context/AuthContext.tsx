@@ -25,6 +25,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setNguoiDung(user)
   }, [])
 
+  const capNhatNguoiDung = useCallback((duLieuMoi: any) => {
+    setNguoiDung(prev => prev ? { ...prev, ...duLieuMoi } : prev)
+  }, [])
+
   const dangXuat = useCallback(async () => {
     const refreshToken = tokenStore.getRefresh()
     if (refreshToken) {
@@ -36,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ nguoiDung, dangTai, dangNhap, dangXuat }}>
+    <AuthContext.Provider value={{ nguoiDung, dangTai, dangNhap, dangXuat, capNhatNguoiDung }}>
       {children}
     </AuthContext.Provider>
   )

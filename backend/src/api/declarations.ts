@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import * as keKhaiService from '../services/keKhaiService.js'
 import * as keKhaiHoRepo from '../repositories/keKhaiHoRepo.js'
+import * as dotKeKhaiRepo from '../repositories/dotKeKhaiRepo.js'
 import { authMiddleware, requireRole } from '../middleware/auth.js'
 import { validateKeKhaiHo, toDeclarationResponse, sanitizeKeKhaiFields } from '../schema/dto.js'
 import { thongBaoDanNopKeKhai, thongBaoDuyetKeKhai, thongBaoTraLaiKeKhai } from '../services/thongBaoService.js'
@@ -31,7 +32,8 @@ router.get('/:id', authMiddleware, asyncHandler(async (req, res) => {
 
 router.post('/', authMiddleware, requireRole('dan'), asyncHandler(async (req, res) => {
   sanitizeKeKhaiFields(req.body)
-  const errors = validateKeKhaiHo(req.body)
+  const dotKeKhai = req.body.dot_id ? await dotKeKhaiRepo.timTheoId(req.body.dot_id) : null
+  const errors = validateKeKhaiHo(req.body, dotKeKhai?.chi_tieu)
   if (errors.length) throw loi.kiemTra('Du lieu khong hop le', errors)
   const kk = await keKhaiService.keKhaiHo({ ...req.body, nguoi_ke_khai_id: req.user.id })
   thongBaoDanNopKeKhai(kk, req.user.id).catch(err => console.error('Loi gui thong bao dan nop:', err.message))

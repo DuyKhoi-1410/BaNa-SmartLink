@@ -33,6 +33,14 @@ export async function taoHoacCapNhat(data) {
 }
 
 export async function nopLenXa(dotId, thonId) {
+  const existing = await timTheoDotVaThon(dotId, thonId)
+  if (!existing) {
+    const ins = await query(
+      `INSERT INTO ke_khai_thon (dot_id, thon_id, ct09_gia_dinh_van_hoa, ct12_thanh_vien_to_cnsc, ct13_huong_dan_dvc, ct14_bao_luc_gia_dinh, trang_thai, ngay_nhap) VALUES ($1,$2,0,0,0,0,'da_nop_xa',NOW()) RETURNING *`,
+      [dotId, thonId]
+    )
+    return ins.rows[0]
+  }
   const result = await query(
     `UPDATE ke_khai_thon SET trang_thai = 'da_nop_xa', updated_at = NOW() WHERE dot_id = $1 AND thon_id = $2 RETURNING *`,
     [dotId, thonId]

@@ -67,7 +67,8 @@ router.post('/:dotId', authMiddleware, requireRole('xa'), upload.single('file'),
     if (!req.file) throw loi.xau('Thieu file')
 
     const dotId = parseInt(req.params.dotId)
-    const ext = path.extname(req.file.originalname) || ''
+    const fileName = Buffer.from(req.file.originalname, 'latin1').toString('utf8')
+    const ext = path.extname(fileName) || ''
     const storagePath = `dot-${dotId}/${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`
 
     const fileUrl = await uploadToStorage(req.file.path, storagePath, req.file.mimetype)
@@ -76,7 +77,7 @@ router.post('/:dotId', authMiddleware, requireRole('xa'), upload.single('file'),
 
     const record = await dinhKemDotRepo.taoMoi({
       dot_id: dotId,
-      file_name: req.file.originalname,
+      file_name: fileName,
       file_url: fileUrl,
       file_size: req.file.size,
       loai_file: req.file.mimetype,

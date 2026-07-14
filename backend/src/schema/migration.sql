@@ -41,6 +41,7 @@ CREATE TABLE nguoi_dung (
   ho_ten VARCHAR(200) NOT NULL,
   cccd VARCHAR(12) UNIQUE,
   so_dien_thoai VARCHAR(15),
+  email VARCHAR(200),
   vai_tro VARCHAR(20) NOT NULL CHECK (vai_tro IN ('dan','thon','xa')),
   thon_id INTEGER REFERENCES thon(id),
   ten_dang_nhap VARCHAR(100) UNIQUE,
@@ -50,6 +51,7 @@ CREATE TABLE nguoi_dung (
   khoa_den TIMESTAMPTZ,
   lan_dang_nhap_cuoi TIMESTAMPTZ,
   doi_mat_khau_luc TIMESTAMPTZ,
+  avatar_url VARCHAR(500),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

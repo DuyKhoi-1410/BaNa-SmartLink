@@ -489,5 +489,6 @@ export async function xuatExcelTongHop(dotId) {
     }
   }
 
-  return { workbook, tenFile: `Báo Cáo ${dotKeKhai.ten_dot}.xlsx` }
+  const tenFileAnToan = dotKeKhai.ten_dot.replace(/[/\\:*?"<>|]/g, '-')
+  return { workbook, tenFile: `BÁO CÁO ${tenFileAnToan}.xlsx` }
 }

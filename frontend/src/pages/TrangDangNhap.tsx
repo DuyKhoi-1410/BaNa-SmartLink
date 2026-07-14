@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, CreditCard, Send, Lock, LogIn, ArrowLeft, Eye, EyeOff, Users, ShieldCheck } from 'lucide-react'
+import { User, CreditCard, Send, Lock, LogIn, ArrowLeft, Eye, EyeOff, Users, ShieldCheck, Mail, Phone } from 'lucide-react'
 import anhNen from '../assets/cauvang1k.jpg'
 import logoIcon from '../assets/LOGO.png'
 import logoChu from '../assets/CHỮ.PNG'
@@ -31,6 +31,7 @@ export default function TrangDangNhap() {
   const [hienMKMoi, setHienMKMoi] = useState(false)
   const [hienXacNhanMK, setHienXacNhanMK] = useState(false)
   const [doiMKThanhCong, setDoiMKThanhCong] = useState(false)
+  const [coMatKhauDan, setCoMatKhauDan] = useState(false)
 
   const [demNguoc, setDemNguoc] = useState(0)
 
@@ -46,6 +47,21 @@ export default function TrangDangNhap() {
   const [hienMatKhau, setHienMatKhau] = useState(false)
   const [dangDangNhap, setDangDangNhap] = useState(false)
   const [loiCanBo, setLoiCanBo] = useState('')
+  // Quên MK cán bộ
+  const [buocQuenMKCB, setBuocQuenMKCB] = useState(0)
+  const [taiKhoanQuenCB, setTaiKhoanQuenCB] = useState('')
+  const [otpQuenCB, setOtpQuenCB] = useState('')
+  const [mkMoiCB, setMkMoiCB] = useState('')
+  const [xacNhanMKCB, setXacNhanMKCB] = useState('')
+  const [hienMKMoiCB, setHienMKMoiCB] = useState(false)
+  const [hienXacNhanCB, setHienXacNhanCB] = useState(false)
+  const [userIdQuenCB, setUserIdQuenCB] = useState<number | null>(null)
+  const [hoTenQuenCB, setHoTenQuenCB] = useState('')
+  const [dangXuLyCB, setDangXuLyCB] = useState(false)
+  const [doiMKCBThanhCong, setDoiMKCBThanhCong] = useState(false)
+  const [emailMaskedCB, setEmailMaskedCB] = useState<string | null>(null)
+  const [sdtMaskedCB, setSdtMaskedCB] = useState<string | null>(null)
+  const [phuongThucOtpCB, setPhuongThucOtpCB] = useState<'email' | 'sdt' | null>(null)
 
   const quayLaiChonVaiTro = () => {
     setVaiTro(null)
@@ -61,6 +77,7 @@ export default function TrangDangNhap() {
     
     setTenDangNhap('')
     setMatKhau('')
+    setBuocQuenMKCB(0)
   }
 
   const xuLyBuoc1Dan = async (e) => {
@@ -83,6 +100,7 @@ export default function TrangDangNhap() {
       const res = await api.post('/auth/dan/xac-minh', { cccd: cccd.trim(), ho_ten: hoTen.trim() })
       setUserId(res.user_id)
       setSdtDaChe(res.sdt_masked || '***')
+      setCoMatKhauDan(!!res.co_mat_khau)
       setBuocDan(2)
     } catch (err) {
       setLoiDan(err.error || 'Không tìm thấy thông tin. Vui lòng kiểm tra lại CCCD và họ tên.')
@@ -159,6 +177,15 @@ export default function TrangDangNhap() {
     }
   }
 
+  const xuLyXacThucOtpQuenMK = () => {
+    if (otpQuenMK !== '123456') {
+      setLoiDan('Mã OTP không đúng. Vui lòng nhập 123456.')
+      return
+    }
+    setLoiDan('')
+    setBuocQuenMK(3)
+  }
+
   const xuLyDatMatKhauMoi = async (e) => {
     e.preventDefault()
     if (!matKhauMoi.trim()) {
@@ -176,7 +203,7 @@ export default function TrangDangNhap() {
     setLoiDan('')
     setDangXacThuc(true)
     try {
-      await api.post('/auth/dan/dat-lai-mat-khau', {
+      await api.patch('/auth/dan/dat-lai-mat-khau-otp', {
         user_id: userId,
         mat_khau_moi: matKhauMoi,
       })
@@ -219,21 +246,90 @@ export default function TrangDangNhap() {
   const xuLyDangNhapCanBo = async (e) => {
     e.preventDefault()
     if (!tenDangNhap.trim() || !matKhau.trim()) {
-      setLoiCanBo('Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu')
+      setLoiCanBo('Vui lòng nhập đầy đủ thông tin đăng nhập')
       return
     }
     setLoiCanBo('')
     setDangDangNhap(true)
     try {
-      const res = await api.post('/auth/can-bo', { ten_dang_nhap: tenDangNhap.trim(), mat_khau: matKhau })
+      const res = await api.post('/auth/can-bo', { tai_khoan: tenDangNhap.trim(), mat_khau: matKhau })
       dangNhap(res.accessToken, res.refreshToken, res.user)
       if (res.user.vai_tro === 'xa') navigate('/xa')
       else if (res.user.vai_tro === 'thon') navigate('/thon')
       else navigate('/')
     } catch (err) {
-      setLoiCanBo(err.error || 'Tên đăng nhập hoặc mật khẩu không đúng.')
+      setLoiCanBo(err.error || 'Thông tin đăng nhập không đúng.')
     } finally {
       setDangDangNhap(false)
+    }
+  }
+
+  const xuLyQuenMKCB_Buoc1 = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!taiKhoanQuenCB.trim()) {
+      setLoiCanBo('Vui lòng nhập tên đăng nhập, email hoặc SĐT')
+      return
+    }
+    setLoiCanBo('')
+    setDangXuLyCB(true)
+    try {
+      const res = await api.post('/auth/can-bo/quen-mat-khau', { tai_khoan: taiKhoanQuenCB.trim() })
+      setUserIdQuenCB(res.user_id)
+      setHoTenQuenCB(res.ho_ten)
+      setEmailMaskedCB(res.email_masked || null)
+      setSdtMaskedCB(res.sdt_masked || null)
+      setPhuongThucOtpCB(null)
+      setBuocQuenMKCB(2)
+    } catch (err: any) {
+      setLoiCanBo(err.error || err.message || 'Không tìm thấy tài khoản')
+    } finally {
+      setDangXuLyCB(false)
+    }
+  }
+
+  const xuLyChonPhuongThucCB = (pt: 'email' | 'sdt') => {
+    setPhuongThucOtpCB(pt)
+    setOtpQuenCB('')
+    setLoiCanBo('')
+    setBuocQuenMKCB(3)
+  }
+
+  const xuLyQuenMKCB_XacThucOtp = () => {
+    if (otpQuenCB !== '123456') {
+      setLoiCanBo('Mã OTP không đúng. Vui lòng nhập 123456.')
+      return
+    }
+    setLoiCanBo('')
+    setBuocQuenMKCB(4)
+  }
+
+  const xuLyQuenMKCB_DatMK = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (mkMoiCB.length < 6) {
+      setLoiCanBo('Mật khẩu mới phải có ít nhất 6 ký tự')
+      return
+    }
+    if (mkMoiCB !== xacNhanMKCB) {
+      setLoiCanBo('Mật khẩu xác nhận không khớp')
+      return
+    }
+    setLoiCanBo('')
+    setDangXuLyCB(true)
+    try {
+      await api.patch('/auth/can-bo/dat-lai-mat-khau', { user_id: userIdQuenCB, mat_khau_moi: mkMoiCB })
+      setDoiMKCBThanhCong(true)
+      setTimeout(() => {
+        setBuocQuenMKCB(0)
+        setDoiMKCBThanhCong(false)
+        setTaiKhoanQuenCB('')
+        setOtpQuenCB('')
+        setMkMoiCB('')
+        setXacNhanMKCB('')
+      }, 2000)
+    } catch (err: any) {
+      setLoiCanBo(err.error || err.message || 'Không thể đặt lại mật khẩu')
+    } finally {
+      setDangXuLyCB(false)
     }
   }
 
@@ -396,19 +492,23 @@ export default function TrangDangNhap() {
                       )}
                     </button>
 
-                    <div className="relative flex items-center my-1">
-                      <div className="flex-1 border-t border-slate-200" />
-                      <span className="px-3 text-xs text-slate-400">hoặc</span>
-                      <div className="flex-1 border-t border-slate-200" />
-                    </div>
+                    {coMatKhauDan && (
+                      <>
+                        <div className="relative flex items-center my-1">
+                          <div className="flex-1 border-t border-slate-200" />
+                          <span className="px-3 text-xs text-slate-400">hoặc</span>
+                          <div className="flex-1 border-t border-slate-200" />
+                        </div>
 
-                    <button
-                      type="button"
-                      onClick={() => { setPhuongThucDan('matkhau'); setLoiDan('') }}
-                      className="w-full py-3 border border-slate-200 text-slate-600 font-medium rounded-xl flex items-center justify-center gap-2 text-sm hover:bg-slate-50 transition-colors"
-                    >
-                      <Lock size={16} /> Đăng nhập bằng mật khẩu
-                    </button>
+                        <button
+                          type="button"
+                          onClick={() => { setPhuongThucDan('matkhau'); setLoiDan('') }}
+                          className="w-full py-3 border border-slate-200 text-slate-600 font-medium rounded-xl flex items-center justify-center gap-2 text-sm hover:bg-slate-50 transition-colors"
+                        >
+                          <Lock size={16} /> Đăng nhập bằng mật khẩu
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -513,14 +613,15 @@ export default function TrangDangNhap() {
                   </div>
                 )}
 
-                {/* Quên mật khẩu — Bước 2: Nhập OTP + đặt mật khẩu mới */}
-                {buocQuenMK === 2 && !doiMKThanhCong && (
-                  <form onSubmit={xuLyDatMatKhauMoi} className="space-y-4">
+                {/* Quên mật khẩu — Bước 2: Nhập OTP */}
+                {buocQuenMK === 2 && (
+                  <div className="space-y-4">
                     <button type="button" onClick={() => { setBuocQuenMK(1); setLoiDan(''); setOtpQuenMK('') }} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-blue-600 transition-colors mb-1">
                       <ArrowLeft size={16} /> Quay lại
                     </button>
                     <div className="bg-emerald-50 rounded-xl px-4 py-3 text-sm text-emerald-700">
-                      Mã OTP đã gửi qua <span className="font-bold">Zalo</span> đến số <span className="font-bold">{sdtDaChe}</span>
+                      Mã OTP đã gửi qua <span className="font-bold">Zalo</span> đến số <span className="font-bold">{sdtDaChe}</span>.
+                      {' '}Nhập mã: <span className="font-bold text-emerald-800">123456</span>
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-1.5">Nhập mã OTP (6 số)</label>
@@ -529,11 +630,22 @@ export default function TrangDangNhap() {
                         inputMode="numeric"
                         maxLength={6}
                         value={otpQuenMK}
-                        onChange={(e) => setOtpQuenMK(e.target.value.replace(/\D/g, ''))}
+                        onChange={(e) => { setOtpQuenMK(e.target.value.replace(/\D/g, '')); setLoiDan('') }}
                         placeholder="Nhập mã 6 số"
                         className="w-full px-4 py-3.5 border border-slate-200 rounded-xl text-center text-2xl font-bold tracking-[0.5em] bg-white/80 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-slate-400 placeholder:text-base placeholder:tracking-normal text-slate-800 transition-all duration-200"
                       />
                     </div>
+
+                    {loiDan && <p className="text-red-500 text-sm font-medium">{loiDan}</p>}
+
+                    <button
+                      type="button"
+                      onClick={xuLyXacThucOtpQuenMK}
+                      disabled={otpQuenMK.length !== 6}
+                      className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-semibold rounded-xl flex items-center justify-center gap-2 text-base transition-all duration-300 ease-out hover:from-emerald-400 hover:to-teal-400 hover:-translate-y-1 hover:shadow-lg hover:shadow-emerald-500/30 active:translate-y-0 active:scale-[0.98] active:shadow-sm disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                    >
+                      <ShieldCheck size={18} /> Xác thực OTP
+                    </button>
 
                     <div className="text-center text-sm">
                       {demNguocQuenMK > 0 ? (
@@ -548,46 +660,49 @@ export default function TrangDangNhap() {
                         </button>
                       )}
                     </div>
+                  </div>
+                )}
 
-                    <div className="border-t border-slate-200 pt-4 space-y-3">
-                      <p className="text-sm font-semibold text-slate-700">Đặt mật khẩu mới</p>
-                      <div>
-                        <div className="relative">
-                          <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                          <input
-                            type={hienMKMoi ? 'text' : 'password'}
-                            value={matKhauMoi}
-                            onChange={(e) => setMatKhauMoi(e.target.value)}
-                            placeholder="Mật khẩu mới (ít nhất 6 ký tự)"
-                            className="w-full pl-12 pr-12 py-3.5 border border-slate-200 rounded-xl text-base bg-white/80 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-slate-400 text-slate-800 transition-all duration-200"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setHienMKMoi(!hienMKMoi)}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                          >
-                            {hienMKMoi ? <EyeOff size={18} /> : <Eye size={18} />}
-                          </button>
-                        </div>
+                {/* Quên mật khẩu — Bước 3: Đặt mật khẩu mới */}
+                {buocQuenMK === 3 && !doiMKThanhCong && (
+                  <form onSubmit={xuLyDatMatKhauMoi} className="space-y-4">
+                    <button type="button" onClick={() => { setBuocQuenMK(2); setLoiDan('') }} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-blue-600 transition-colors mb-1">
+                      <ArrowLeft size={16} /> Quay lại
+                    </button>
+                    <div className="mb-2">
+                      <h3 className="text-lg font-bold text-slate-800">Đặt mật khẩu mới</h3>
+                      <p className="text-slate-500 text-sm mt-0.5">Tạo mật khẩu mới cho tài khoản <span className="font-semibold text-slate-700">{hoTen}</span></p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">Mật khẩu mới</label>
+                      <div className="relative">
+                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                          type={hienMKMoi ? 'text' : 'password'}
+                          value={matKhauMoi}
+                          onChange={(e) => { setMatKhauMoi(e.target.value); setLoiDan('') }}
+                          placeholder="Mật khẩu mới (ít nhất 6 ký tự)"
+                          className="w-full pl-12 pr-12 py-3.5 border border-slate-200 rounded-xl text-base bg-white/80 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-slate-400 text-slate-800 transition-all duration-200"
+                        />
+                        <button type="button" onClick={() => setHienMKMoi(!hienMKMoi)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                          {hienMKMoi ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
                       </div>
-                      <div>
-                        <div className="relative">
-                          <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                          <input
-                            type={hienXacNhanMK ? 'text' : 'password'}
-                            value={xacNhanMKMoi}
-                            onChange={(e) => setXacNhanMKMoi(e.target.value)}
-                            placeholder="Nhập lại mật khẩu mới"
-                            className="w-full pl-12 pr-12 py-3.5 border border-slate-200 rounded-xl text-base bg-white/80 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-slate-400 text-slate-800 transition-all duration-200"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setHienXacNhanMK(!hienXacNhanMK)}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                          >
-                            {hienXacNhanMK ? <EyeOff size={18} /> : <Eye size={18} />}
-                          </button>
-                        </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">Xác nhận mật khẩu</label>
+                      <div className="relative">
+                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                          type={hienXacNhanMK ? 'text' : 'password'}
+                          value={xacNhanMKMoi}
+                          onChange={(e) => { setXacNhanMKMoi(e.target.value); setLoiDan('') }}
+                          placeholder="Nhập lại mật khẩu mới"
+                          className="w-full pl-12 pr-12 py-3.5 border border-slate-200 rounded-xl text-base bg-white/80 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-slate-400 text-slate-800 transition-all duration-200"
+                        />
+                        <button type="button" onClick={() => setHienXacNhanMK(!hienXacNhanMK)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                          {hienXacNhanMK ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
                       </div>
                     </div>
 
@@ -676,68 +791,294 @@ export default function TrangDangNhap() {
 
             {/* ===== FORM CÁN BỘ ===== */}
             {vaiTro === 'canbo' && (
-              <form onSubmit={xuLyDangNhapCanBo} className="space-y-4">
+              <div className="space-y-4">
                 <button type="button" onClick={quayLaiChonVaiTro} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-blue-600 transition-colors mb-1">
                   <ArrowLeft size={16} /> Quay lại
                 </button>
-                <div className="mb-2">
-                  <h3 className="text-lg font-bold text-slate-800">Đăng nhập cán bộ</h3>
-                  <p className="text-slate-500 text-sm mt-0.5">Dành cho cán bộ thôn và cán bộ xã</p>
-                </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Tên đăng nhập</label>
-                  <div className="relative">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input
-                      type="text"
-                      value={tenDangNhap}
-                      onChange={(e) => setTenDangNhap(e.target.value)}
-                      placeholder="Nhập tên đăng nhập được cấp"
-                      className="w-full pl-12 pr-4 py-3.5 border border-slate-200 rounded-xl text-base bg-white/80 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-slate-400 text-slate-800 transition-all duration-200"
-                    />
-                  </div>
-                </div>
+                {buocQuenMKCB === 0 && (
+                  <form onSubmit={xuLyDangNhapCanBo} className="space-y-4">
+                    <div className="mb-2">
+                      <h3 className="text-lg font-bold text-slate-800">Đăng nhập cán bộ</h3>
+                      <p className="text-slate-500 text-sm mt-0.5">Dành cho cán bộ thôn và cán bộ xã</p>
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Mật khẩu</label>
-                  <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input
-                      type={hienMatKhau ? 'text' : 'password'}
-                      value={matKhau}
-                      onChange={(e) => setMatKhau(e.target.value)}
-                      placeholder="Nhập mật khẩu"
-                      className="w-full pl-12 pr-12 py-3.5 border border-slate-200 rounded-xl text-base bg-white/80 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-slate-400 text-slate-800 transition-all duration-200"
-                    />
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">Tài khoản</label>
+                      <div className="relative">
+                        <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                          type="text"
+                          value={tenDangNhap}
+                          onChange={(e) => setTenDangNhap(e.target.value)}
+                          placeholder="Tên đăng nhập, email hoặc SĐT"
+                          className="w-full pl-12 pr-4 py-3.5 border border-slate-200 rounded-xl text-base bg-white/80 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-slate-400 text-slate-800 transition-all duration-200"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">Mật khẩu</label>
+                      <div className="relative">
+                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                          type={hienMatKhau ? 'text' : 'password'}
+                          value={matKhau}
+                          onChange={(e) => setMatKhau(e.target.value)}
+                          placeholder="Nhập mật khẩu"
+                          className="w-full pl-12 pr-12 py-3.5 border border-slate-200 rounded-xl text-base bg-white/80 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-slate-400 text-slate-800 transition-all duration-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setHienMatKhau(!hienMatKhau)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                        >
+                          {hienMatKhau ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {loiCanBo && <p className="text-red-500 text-sm font-medium">{loiCanBo}</p>}
+
+                    <button
+                      type="submit"
+                      disabled={dangDangNhap}
+                      className="w-full py-3.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-semibold rounded-xl flex items-center justify-center gap-2 text-base transition-all duration-300 ease-out hover:from-blue-400 hover:to-indigo-400 hover:-translate-y-1 hover:shadow-lg hover:shadow-blue-500/30 active:translate-y-0 active:scale-[0.98] active:shadow-sm disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                    >
+                      {dangDangNhap ? (
+                        <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Đang đăng nhập...</>
+                      ) : (
+                        <><LogIn size={18} /> Đăng nhập</>
+                      )}
+                    </button>
+
                     <button
                       type="button"
-                      onClick={() => setHienMatKhau(!hienMatKhau)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                      onClick={() => { setBuocQuenMKCB(1); setLoiCanBo(''); setTaiKhoanQuenCB('') }}
+                      className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors py-2"
                     >
-                      {hienMatKhau ? <EyeOff size={18} /> : <Eye size={18} />}
+                      Quên mật khẩu?
+                    </button>
+                  </form>
+                )}
+
+                {buocQuenMKCB === 1 && (
+                  <form onSubmit={xuLyQuenMKCB_Buoc1} className="space-y-4">
+                    <div className="mb-2">
+                      <h3 className="text-lg font-bold text-slate-800">Quên mật khẩu</h3>
+                      <p className="text-slate-500 text-sm mt-0.5">Nhập tài khoản để khôi phục mật khẩu</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">Tài khoản</label>
+                      <div className="relative">
+                        <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                          type="text"
+                          value={taiKhoanQuenCB}
+                          onChange={(e) => { setTaiKhoanQuenCB(e.target.value); setLoiCanBo('') }}
+                          placeholder="Tên đăng nhập, email hoặc SĐT"
+                          className="w-full pl-12 pr-4 py-3.5 border border-slate-200 rounded-xl text-base bg-white/80 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-slate-400 text-slate-800 transition-all duration-200"
+                        />
+                      </div>
+                    </div>
+
+                    {loiCanBo && <p className="text-red-500 text-sm font-medium">{loiCanBo}</p>}
+
+                    <button
+                      type="submit"
+                      disabled={dangXuLyCB}
+                      className="w-full py-3.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-semibold rounded-xl flex items-center justify-center gap-2 text-base transition-all duration-300 ease-out hover:from-blue-400 hover:to-indigo-400 hover:-translate-y-1 hover:shadow-lg hover:shadow-blue-500/30 active:translate-y-0 active:scale-[0.98] active:shadow-sm disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                    >
+                      {dangXuLyCB ? (
+                        <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Đang tìm...</>
+                      ) : (
+                        <><Send size={18} /> Tiếp tục</>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => { setBuocQuenMKCB(0); setLoiCanBo('') }}
+                      className="w-full text-sm text-slate-500 hover:text-slate-700 font-medium transition-colors py-2"
+                    >
+                      Quay lại đăng nhập
+                    </button>
+                  </form>
+                )}
+
+                {buocQuenMKCB === 2 && (
+                  <div className="space-y-4">
+                    <div className="mb-2">
+                      <h3 className="text-lg font-bold text-slate-800">Chọn phương thức xác thực</h3>
+                      <p className="text-slate-500 text-sm mt-0.5">
+                        Xin chào <span className="font-semibold text-slate-700">{hoTenQuenCB}</span>. Chọn cách nhận mã OTP:
+                      </p>
+                    </div>
+
+                    <div className="space-y-3">
+                      {emailMaskedCB && (
+                        <button
+                          type="button"
+                          onClick={() => xuLyChonPhuongThucCB('email')}
+                          className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-slate-200 bg-white hover:border-blue-400 hover:bg-blue-50/50 transition-all duration-200 group"
+                        >
+                          <div className="w-11 h-11 bg-blue-50 rounded-xl flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+                            <Mail size={20} className="text-blue-600" />
+                          </div>
+                          <div className="text-left flex-1">
+                            <p className="font-semibold text-slate-800 text-sm">Gửi qua Email</p>
+                            <p className="text-slate-400 text-xs mt-0.5">{emailMaskedCB}</p>
+                          </div>
+                          <ArrowLeft size={16} className="text-slate-300 rotate-180 group-hover:text-blue-500 transition-colors" />
+                        </button>
+                      )}
+
+                      {sdtMaskedCB && (
+                        <button
+                          type="button"
+                          onClick={() => xuLyChonPhuongThucCB('sdt')}
+                          className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-slate-200 bg-white hover:border-green-400 hover:bg-green-50/50 transition-all duration-200 group"
+                        >
+                          <div className="w-11 h-11 bg-green-50 rounded-xl flex items-center justify-center group-hover:bg-green-100 transition-colors">
+                            <Phone size={20} className="text-green-600" />
+                          </div>
+                          <div className="text-left flex-1">
+                            <p className="font-semibold text-slate-800 text-sm">Gửi qua SĐT</p>
+                            <p className="text-slate-400 text-xs mt-0.5">{sdtMaskedCB}</p>
+                          </div>
+                          <ArrowLeft size={16} className="text-slate-300 rotate-180 group-hover:text-green-500 transition-colors" />
+                        </button>
+                      )}
+
+                      {!emailMaskedCB && !sdtMaskedCB && (
+                        <div className="text-center py-4">
+                          <p className="text-red-500 text-sm font-medium">Tài khoản chưa liên kết email hoặc SĐT.</p>
+                          <p className="text-slate-400 text-xs mt-1">Vui lòng liên hệ cán bộ cấp trên để được hỗ trợ.</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => { setBuocQuenMKCB(1); setLoiCanBo('') }}
+                      className="w-full text-sm text-slate-500 hover:text-slate-700 font-medium transition-colors py-2"
+                    >
+                      Quay lại
                     </button>
                   </div>
-                </div>
+                )}
 
-                {loiCanBo && <p className="text-red-500 text-sm font-medium">{loiCanBo}</p>}
+                {buocQuenMKCB === 3 && (
+                  <div className="space-y-4">
+                    <div className="mb-2">
+                      <h3 className="text-lg font-bold text-slate-800">Nhập mã OTP</h3>
+                      <p className="text-slate-500 text-sm mt-0.5">
+                        Mã OTP đã gửi qua {phuongThucOtpCB === 'email' ? 'email' : 'SĐT'}{' '}
+                        <span className="font-semibold text-slate-700">{phuongThucOtpCB === 'email' ? emailMaskedCB : sdtMaskedCB}</span>.
+                        {' '}Nhập mã: <span className="font-semibold text-blue-600">123456</span>
+                      </p>
+                    </div>
 
-                <button
-                  type="submit"
-                  disabled={dangDangNhap}
-                  className="w-full py-3.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-semibold rounded-xl flex items-center justify-center gap-2 text-base transition-all duration-300 ease-out hover:from-blue-400 hover:to-indigo-400 hover:-translate-y-1 hover:shadow-lg hover:shadow-blue-500/30 active:translate-y-0 active:scale-[0.98] active:shadow-sm disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
-                >
-                  {dangDangNhap ? (
-                    <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Đang đăng nhập...</>
-                  ) : (
-                    <><LogIn size={18} /> Đăng nhập</>
-                  )}
-                </button>
+                    <div>
+                      <input
+                        type="text"
+                        value={otpQuenCB}
+                        onChange={(e) => { setOtpQuenCB(e.target.value.replace(/\D/g, '').slice(0, 6)); setLoiCanBo('') }}
+                        maxLength={6}
+                        className="w-full px-4 py-3.5 rounded-xl border border-slate-200 text-center text-2xl tracking-[0.5em] font-mono bg-white/80 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800"
+                        placeholder="------"
+                      />
+                    </div>
 
-                <button type="button" className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors py-2">
-                  Quên mật khẩu?
-                </button>
-              </form>
+                    {loiCanBo && <p className="text-red-500 text-sm font-medium">{loiCanBo}</p>}
+
+                    <button
+                      type="button"
+                      onClick={xuLyQuenMKCB_XacThucOtp}
+                      disabled={otpQuenCB.length !== 6}
+                      className="w-full py-3.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-semibold rounded-xl flex items-center justify-center gap-2 text-base transition-all duration-300 ease-out hover:from-blue-400 hover:to-indigo-400 hover:-translate-y-1 hover:shadow-lg hover:shadow-blue-500/30 active:translate-y-0 active:scale-[0.98] active:shadow-sm disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                    >
+                      <ShieldCheck size={18} /> Xác thực
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => { setBuocQuenMKCB(2); setLoiCanBo('') }}
+                      className="w-full text-sm text-slate-500 hover:text-slate-700 font-medium transition-colors py-2"
+                    >
+                      Chọn phương thức khác
+                    </button>
+                  </div>
+                )}
+
+                {buocQuenMKCB === 4 && !doiMKCBThanhCong && (
+                  <form onSubmit={xuLyQuenMKCB_DatMK} className="space-y-4">
+                    <div className="mb-2">
+                      <h3 className="text-lg font-bold text-slate-800">Đặt mật khẩu mới</h3>
+                      <p className="text-slate-500 text-sm mt-0.5">Tạo mật khẩu mới cho tài khoản <span className="font-semibold text-slate-700">{hoTenQuenCB}</span></p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">Mật khẩu mới</label>
+                      <div className="relative">
+                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                          type={hienMKMoiCB ? 'text' : 'password'}
+                          value={mkMoiCB}
+                          onChange={(e) => { setMkMoiCB(e.target.value); setLoiCanBo('') }}
+                          placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)"
+                          className="w-full pl-12 pr-12 py-3.5 border border-slate-200 rounded-xl text-base bg-white/80 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-slate-400 text-slate-800 transition-all duration-200"
+                        />
+                        <button type="button" onClick={() => setHienMKMoiCB(!hienMKMoiCB)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                          {hienMKMoiCB ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">Xác nhận mật khẩu</label>
+                      <div className="relative">
+                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                          type={hienXacNhanCB ? 'text' : 'password'}
+                          value={xacNhanMKCB}
+                          onChange={(e) => { setXacNhanMKCB(e.target.value); setLoiCanBo('') }}
+                          placeholder="Nhập lại mật khẩu mới"
+                          className="w-full pl-12 pr-12 py-3.5 border border-slate-200 rounded-xl text-base bg-white/80 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-slate-400 text-slate-800 transition-all duration-200"
+                        />
+                        <button type="button" onClick={() => setHienXacNhanCB(!hienXacNhanCB)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                          {hienXacNhanCB ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {loiCanBo && <p className="text-red-500 text-sm font-medium">{loiCanBo}</p>}
+
+                    <button
+                      type="submit"
+                      disabled={dangXuLyCB}
+                      className="w-full py-3.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-semibold rounded-xl flex items-center justify-center gap-2 text-base transition-all duration-300 ease-out hover:from-blue-400 hover:to-indigo-400 hover:-translate-y-1 hover:shadow-lg hover:shadow-blue-500/30 active:translate-y-0 active:scale-[0.98] active:shadow-sm disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                    >
+                      {dangXuLyCB ? (
+                        <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Đang xử lý...</>
+                      ) : (
+                        <><Lock size={18} /> Đặt mật khẩu mới</>
+                      )}
+                    </button>
+                  </form>
+                )}
+
+                {doiMKCBThanhCong && (
+                  <div className="text-center space-y-3 py-4">
+                    <div className="w-16 h-16 mx-auto bg-green-50 rounded-2xl flex items-center justify-center">
+                      <ShieldCheck size={28} className="text-green-600" />
+                    </div>
+                    <p className="text-green-700 font-semibold">Đã đặt lại mật khẩu thành công!</p>
+                    <p className="text-slate-500 text-sm">Đang quay lại trang đăng nhập...</p>
+                  </div>
+                )}
+              </div>
             )}
           </div>
 

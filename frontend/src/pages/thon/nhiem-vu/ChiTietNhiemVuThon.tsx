@@ -26,7 +26,7 @@ export default function ChiTietNhiemVuThon({ nhiemVu, thonId, quayLai }) {
     try {
       const [keKhaiList, householdList, thonData, files] = await Promise.all([
         api.get(`/declarations?dot_id=${nhiemVu.id}&thon_id=${thonId}`),
-        api.get(`/households?thon_id=${thonId}`),
+        api.get(`/households?thon_id=${thonId}&trang_thai=dang_cu_tru`),
         api.get(`/village-declarations/${nhiemVu.id}/${thonId}`).catch(() => null),
         api.get(`/attachments/${nhiemVu.id}`).catch(() => []),
       ])
@@ -63,6 +63,7 @@ export default function ChiTietNhiemVuThon({ nhiemVu, thonId, quayLai }) {
           duLieuCT,
           trangThaiDuyet: trangThaiMap[kk.trang_thai] || 'cho-duyet',
           lyDoTuChoi: kk.ly_do_tra_lai,
+          ghiChu: kk.ghi_chu || null,
         }
       })
       setDanhSachHo(dsHo)

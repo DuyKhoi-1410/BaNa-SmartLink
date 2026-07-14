@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
-import { Mail, Phone, Send, ShieldCheck, CheckCircle2, ArrowLeft } from 'lucide-react'
+import { Mail, Phone, Send, ShieldCheck, CheckCircle2, ArrowLeft, Loader2 } from 'lucide-react'
+import { useAuth } from '../../../context/AuthContext'
+import { api } from '../../../lib/api'
 
-function OtpInput({ value, onChange, onComplete }) {
-  const inputRefs = useRef([])
+function OtpInput({ value, onChange, onComplete }: { value: string[], onChange: (v: string[]) => void, onComplete: (code: string) => void }) {
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([])
   const [focusIdx, setFocusIdx] = useState(-1)
 
-  const xuLyNhap = (e, idx) => {
+  const xuLyNhap = (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
     const val = e.target.value.replace(/\D/g, '')
     if (!val) return
     const maMoi = [...value]
@@ -19,7 +21,7 @@ function OtpInput({ value, onChange, onComplete }) {
     }
   }
 
-  const xuLyXoa = (e, idx) => {
+  const xuLyXoa = (e: React.KeyboardEvent, idx: number) => {
     if (e.key === 'Backspace') {
       const maMoi = [...value]
       if (maMoi[idx]) {
@@ -33,7 +35,7 @@ function OtpInput({ value, onChange, onComplete }) {
     }
   }
 
-  const xuLyDan = (e) => {
+  const xuLyDan = (e: React.ClipboardEvent) => {
     e.preventDefault()
     const data = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
     if (!data) return
@@ -75,22 +77,39 @@ function OtpInput({ value, onChange, onComplete }) {
   )
 }
 
-function kiemTraEmail(email) {
+function kiemTraEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 }
 
-function kiemTraSdt(sdt) {
+function kiemTraSdt(sdt: string) {
   return /^0\d{9}$/.test(sdt)
 }
 
-function KhoiXacThuc({ loai, icon: Icon, mauIcon, mauBg, tieuDe, moTa, placeholder, inputType }) {
+function KhoiXacThuc({ loai, icon: Icon, mauIcon, mauBg, tieuDe, moTa, placeholder, giaTriHienTai, onCapNhat }: {
+  loai: 'email' | 'sdt'
+  icon: any
+  mauIcon: string
+  mauBg: string
+  tieuDe: string
+  moTa: string
+  placeholder: string
+  giaTriHienTai: string | null
+  onCapNhat: (giaTri: string) => Promise<void>
+}) {
   const [giaTri, setGiaTri] = useState('')
-  const [buoc, setBuoc] = useState('nhap')
+  const [buoc, setBuoc] = useState<'nhap' | 'otp' | 'thanhCong'>(giaTriHienTai ? 'thanhCong' : 'nhap')
   const [otp, setOtp] = useState(Array(6).fill(''))
   const [demNguoc, setDemNguoc] = useState(0)
   const [dangXacThuc, setDangXacThuc] = useState(false)
-  const [daXacThuc, setDaXacThuc] = useState(false)
   const [loiNhapLieu, setLoiNhapLieu] = useState('')
+  const [loiOtp, setLoiOtp] = useState('')
+
+  useEffect(() => {
+    if (giaTriHienTai) {
+      setGiaTri(giaTriHienTai)
+      setBuoc('thanhCong')
+    }
+  }, [giaTriHienTai])
 
   const hopLe = loai === 'email' ? kiemTraEmail(giaTri) : kiemTraSdt(giaTri)
 
@@ -100,7 +119,7 @@ function KhoiXacThuc({ loai, icon: Icon, mauIcon, mauBg, tieuDe, moTa, placehold
     return () => clearTimeout(timer)
   }, [demNguoc])
 
-  const xuLyNhapGiaTri = (e) => {
+  const xuLyNhapGiaTri = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value
     if (loai === 'sdt') {
       val = val.replace(/\D/g, '').slice(0, 10)
@@ -118,23 +137,41 @@ function KhoiXacThuc({ loai, icon: Icon, mauIcon, mauBg, tieuDe, moTa, placehold
     setBuoc('otp')
     setOtp(Array(6).fill(''))
     setDemNguoc(60)
-    setDaXacThuc(false)
+    setLoiOtp('')
   }
 
-  const xacThuc = (ma) => {
+  const xacThuc = async (maOtp?: string) => {
+    const ma = maOtp || otp.join('')
+    if (ma !== '123456') {
+      setLoiOtp('Mã OTP không đúng. Vui lòng nhập 123456.')
+      return
+    }
     setDangXacThuc(true)
-    setTimeout(() => {
-      setDangXacThuc(false)
-      setDaXacThuc(true)
+    setLoiOtp('')
+    try {
+      await onCapNhat(giaTri)
       setBuoc('thanhCong')
-    }, 1500)
+    } catch (err: any) {
+      setLoiOtp(err.message || 'Không thể lưu thông tin')
+    } finally {
+      setDangXacThuc(false)
+    }
   }
 
   const quayLai = () => {
     setBuoc('nhap')
     setOtp(Array(6).fill(''))
-    setDaXacThuc(false)
+    setLoiOtp('')
   }
+
+  const doiGiaTri = () => {
+    setBuoc('nhap')
+    setGiaTri('')
+    setOtp(Array(6).fill(''))
+    setLoiOtp('')
+  }
+
+  const daXacThuc = buoc === 'thanhCong'
 
   return (
     <div className={`p-6 rounded-2xl border transition-all duration-300 ${
@@ -149,7 +186,7 @@ function KhoiXacThuc({ loai, icon: Icon, mauIcon, mauBg, tieuDe, moTa, placehold
           <p className="text-xs text-slate-400 mt-0.5">{moTa}</p>
         </div>
         {daXacThuc && (
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 rounded-full animate-[fadeIn_0.5s_ease]">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 rounded-full">
             <CheckCircle2 size={16} className="text-green-600" />
             <span className="text-xs font-semibold text-green-700">Đã xác thực</span>
           </div>
@@ -206,30 +243,32 @@ function KhoiXacThuc({ loai, icon: Icon, mauIcon, mauBg, tieuDe, moTa, placehold
             </p>
           </div>
 
-          <OtpInput value={otp} onChange={setOtp} onComplete={xacThuc} />
+          <OtpInput value={otp} onChange={setOtp} onComplete={(code) => xacThuc(code)} />
+
+          {loiOtp && (
+            <p className="text-red-500 text-sm font-medium text-center">{loiOtp}</p>
+          )}
 
           {dangXacThuc && (
             <div className="flex items-center justify-center gap-2 text-blue-600">
-              <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <Loader2 size={20} className="animate-spin" />
               <span className="text-sm font-medium">Đang xác thực...</span>
             </div>
           )}
 
           <div className="flex items-center justify-between pt-2">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={xacThuc}
-                disabled={otp.some((v) => !v) || dangXacThuc}
-                className="flex items-center gap-2 px-5 py-2.5 bg-green-500 text-white rounded-xl text-sm font-semibold
-                  hover:bg-green-600 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-green-500/25
-                  active:translate-y-0 active:scale-[0.98]
-                  disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none
-                  transition-all duration-300"
-              >
-                <ShieldCheck size={16} />
-                Xác thực
-              </button>
-            </div>
+            <button
+              onClick={() => xacThuc()}
+              disabled={otp.some((v) => !v) || dangXacThuc}
+              className="flex items-center gap-2 px-5 py-2.5 bg-green-500 text-white rounded-xl text-sm font-semibold
+                hover:bg-green-600 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-green-500/25
+                active:translate-y-0 active:scale-[0.98]
+                disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none
+                transition-all duration-300"
+            >
+              <ShieldCheck size={16} />
+              Xác thực
+            </button>
 
             <div className="text-right">
               {demNguoc > 0 ? (
@@ -262,7 +301,7 @@ function KhoiXacThuc({ loai, icon: Icon, mauIcon, mauBg, tieuDe, moTa, placehold
             <span className="text-sm font-medium text-green-700">{giaTri}</span>
           </div>
           <button
-            onClick={quayLai}
+            onClick={doiGiaTri}
             className="text-sm text-slate-500 hover:text-slate-700 hover:underline transition-all"
           >
             Đổi {loai === 'email' ? 'email' : 'số điện thoại'}
@@ -274,11 +313,23 @@ function KhoiXacThuc({ loai, icon: Icon, mauIcon, mauBg, tieuDe, moTa, placehold
 }
 
 export default function XacThucTaiKhoan() {
+  const { nguoiDung, capNhatNguoiDung } = useAuth()
+
+  const capNhatEmail = async (email: string) => {
+    const result = await api.patch('/auth/me/email', { email })
+    capNhatNguoiDung(result.user)
+  }
+
+  const capNhatSdt = async (soDienThoai: string) => {
+    const result = await api.patch('/auth/me/so-dien-thoai', { so_dien_thoai: soDienThoai })
+    capNhatNguoiDung(result.user)
+  }
+
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
       <div className="px-8 py-6 border-b border-slate-100">
         <h1 className="text-2xl font-bold text-slate-800">Xác Thực Tài Khoản</h1>
-        <p className="text-slate-500 mt-1">Xác thực email và số điện thoại bằng mã OTP</p>
+        <p className="text-slate-500 mt-1">Liên kết email và số điện thoại để đăng nhập và khôi phục mật khẩu</p>
       </div>
 
       <div className="p-8 space-y-6">
@@ -288,9 +339,10 @@ export default function XacThucTaiKhoan() {
           mauIcon="text-blue-600"
           mauBg="bg-blue-50"
           tieuDe="Xác thực qua Email"
-          moTa="Mã OTP gồm 6 chữ số sẽ được gửi về email của bạn"
+          moTa="Liên kết email để đăng nhập và khôi phục mật khẩu. Nhập mã OTP: 123456"
           placeholder="Nhập địa chỉ email"
-          inputType="email"
+          giaTriHienTai={nguoiDung?.email || null}
+          onCapNhat={capNhatEmail}
         />
 
         <KhoiXacThuc
@@ -299,9 +351,10 @@ export default function XacThucTaiKhoan() {
           mauIcon="text-green-600"
           mauBg="bg-green-50"
           tieuDe="Xác thực qua Số điện thoại"
-          moTa="Mã OTP gồm 6 chữ số sẽ được gửi qua tin nhắn SMS"
+          moTa="Liên kết SĐT để đăng nhập và khôi phục mật khẩu. Nhập mã OTP: 123456"
           placeholder="Nhập số điện thoại"
-          inputType="tel"
+          giaTriHienTai={nguoiDung?.so_dien_thoai || null}
+          onCapNhat={capNhatSdt}
         />
       </div>
     </div>

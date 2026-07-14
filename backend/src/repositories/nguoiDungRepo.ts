@@ -16,6 +16,21 @@ export async function timTheoTenDangNhap(tenDangNhap) {
   return result.rows[0] || null
 }
 
+export async function timTheoEmail(email) {
+  const result = await query(
+    `SELECT nd.*, t.ten_thon FROM nguoi_dung nd LEFT JOIN thon t ON nd.thon_id = t.id WHERE nd.email = $1`,
+    [email]
+  )
+  return result.rows[0] || null
+}
+
+export async function timTheoSoDienThoai(soDienThoai, chiCanBo = false) {
+  let sql = `SELECT nd.*, t.ten_thon FROM nguoi_dung nd LEFT JOIN thon t ON nd.thon_id = t.id WHERE nd.so_dien_thoai = $1`
+  if (chiCanBo) sql += ` AND nd.vai_tro IN ('thon','xa')`
+  const result = await query(sql, [soDienThoai])
+  return result.rows[0] || null
+}
+
 export async function timTheoId(id) {
   const result = await query(
     `SELECT nd.*, t.ten_thon FROM nguoi_dung nd LEFT JOIN thon t ON nd.thon_id = t.id WHERE nd.id = $1`,
