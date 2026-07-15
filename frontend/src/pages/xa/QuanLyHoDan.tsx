@@ -49,7 +49,7 @@ export default function QuanLyHoDan() {
       const data = await api.get(`/nhan-khau?${params.toString()}`)
       setDanhSach(data || [])
     } catch (err: any) {
-      setLoi(err.message || 'Khong tai duoc danh sach ho dan')
+      setLoi(err.message || 'Không tải được danh sách hộ dân')
     } finally {
       setDangTai(false)
     }
@@ -68,7 +68,7 @@ export default function QuanLyHoDan() {
       const data = await api.get(`/nhan-khau/${id}`)
       setChiTiet(data)
     } catch (err: any) {
-      setToast(err.message || 'Khong xem duoc chi tiet')
+      setToast(err.message || 'Không xem được chi tiết')
       setChiTiet(null)
     } finally {
       setDangTaiChiTiet(false)
@@ -76,26 +76,26 @@ export default function QuanLyHoDan() {
   }
 
   const danhDauRoiDi = async (id: number) => {
-    const lyDo = window.prompt('Ly do ho roi khoi dia phuong:')
+    const lyDo = window.prompt('Lý do hộ rời khỏi địa phương:')
     if (lyDo === null) return
     try {
       await api.patch(`/nhan-khau/${id}/roi-di`, { ly_do: lyDo })
-      setToast('Da danh dau ho roi khoi dia phuong')
+      setToast('Đã đánh dấu hộ rời khỏi địa phương')
       setChiTiet(null)
       taiDanhSach()
     } catch (err: any) {
-      setToast(err.message || 'Thao tac that bai')
+      setToast(err.message || 'Thao tác thất bại')
     }
   }
 
   const choQuayLai = async (id: number) => {
     try {
       await api.patch(`/nhan-khau/${id}/quay-lai`, {})
-      setToast('Da cho ho quay lai cu tru')
+      setToast('Đã cho hộ quay lại cư trú')
       setChiTiet(null)
       taiDanhSach()
     } catch (err: any) {
-      setToast(err.message || 'Thao tac that bai')
+      setToast(err.message || 'Thao tác thất bại')
     }
   }
 
@@ -109,24 +109,24 @@ export default function QuanLyHoDan() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-slate-800 flex items-center gap-2">
-            <Users className="text-indigo-600" size={26} /> Quan ly nhan khau
+            <Users className="text-indigo-600" size={26} /> Quản lý nhân khẩu
           </h1>
           <p className="text-slate-500 text-sm mt-1">
-            Danh sach ho dan cua xa. Thong tin nhay cam chi hien thi khi bam "Xem chi tiet".
+            Danh sách hộ dân của xã. Thông tin nhạy cảm chỉ hiển thị khi bấm "Xem chi tiết".
           </p>
         </div>
         <button
           onClick={() => setHienThemHo(true)}
           className="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-lg bg-indigo-600 text-white font-semibold text-sm transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-lg hover:bg-indigo-500 active:translate-y-0 active:scale-[0.98] active:shadow-sm"
         >
-          <Plus size={18} /> Them ho chuyen den
+          <Plus size={18} /> Thêm hộ chuyển đến
         </button>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4 mb-6">
-        <TheThongKe nhan="Tong ho" giaTri={danhSach.length} mau="slate" icon={<Home size={18} />} />
-        <TheThongKe nhan="Dang cu tru" giaTri={soCuTru} mau="emerald" icon={<ShieldCheck size={18} />} />
-        <TheThongKe nhan="Da roi" giaTri={soDaRoi} mau="amber" icon={<LogOutIcon size={18} />} />
+        <TheThongKe nhan="Tổng hộ" giaTri={danhSach.length} mau="slate" icon={<Home size={18} />} />
+        <TheThongKe nhan="Đang cư trú" giaTri={soCuTru} mau="emerald" icon={<ShieldCheck size={18} />} />
+        <TheThongKe nhan="Đã rời" giaTri={soDaRoi} mau="amber" icon={<LogOutIcon size={18} />} />
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 mb-4 flex flex-col md:flex-row gap-3">
@@ -135,7 +135,7 @@ export default function QuanLyHoDan() {
           <input
             value={timKiem}
             onChange={e => setTimKiem(e.target.value)}
-            placeholder="Tim theo ten chu ho..."
+            placeholder="Tìm theo tên chủ hộ..."
             className="w-full h-11 pl-10 pr-4 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-400"
           />
         </div>
@@ -144,7 +144,7 @@ export default function QuanLyHoDan() {
           onChange={e => setLocThon(e.target.value)}
           className="h-11 px-4 rounded-lg border border-slate-200 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
         >
-          <option value="">Tat ca thon</option>
+          <option value="">Tất cả thôn</option>
           {danhSachThon.map(t => <option key={t.id} value={t.id}>{t.ten_thon}</option>)}
         </select>
         <select
@@ -152,32 +152,32 @@ export default function QuanLyHoDan() {
           onChange={e => setLocTrangThai(e.target.value)}
           className="h-11 px-4 rounded-lg border border-slate-200 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
         >
-          <option value="">Tat ca trang thai</option>
-          <option value="dang_cu_tru">Dang cu tru</option>
-          <option value="da_roi">Da roi</option>
+          <option value="">Tất cả trạng thái</option>
+          <option value="dang_cu_tru">Đang cư trú</option>
+          <option value="da_roi">Đã rời</option>
         </select>
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
         {dangTai ? (
           <div className="flex items-center justify-center gap-2 py-16 text-slate-400">
-            <Loader2 size={20} className="animate-spin" /> Dang tai...
+            <Loader2 size={20} className="animate-spin" /> Đang tải...
           </div>
         ) : loi ? (
           <div className="flex items-center justify-center gap-2 py-16 text-red-500">
             <AlertCircle size={20} /> {loi}
           </div>
         ) : danhSach.length === 0 ? (
-          <div className="py-16 text-center text-slate-400">Khong co ho dan nao</div>
+          <div className="py-16 text-center text-slate-400">Không có hộ dân nào</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[640px]">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wider">Chu ho</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wider">Thon</th>
-                  <th className="text-center px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wider">Trang thai</th>
-                  <th className="text-right px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wider">Thao tac</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wider">Chủ hộ</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wider">Thôn</th>
+                  <th className="text-center px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wider">Trạng thái</th>
+                  <th className="text-right px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wider">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -188,11 +188,11 @@ export default function QuanLyHoDan() {
                     <td className="px-4 py-3 text-center">
                       {ho.trang_thai === 'dang_cu_tru' ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold">
-                          <ShieldCheck size={12} /> Dang cu tru
+                          <ShieldCheck size={12} /> Đang cư trú
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold">
-                          <LogOutIcon size={12} /> Da roi
+                          <LogOutIcon size={12} /> Đã rời
                         </span>
                       )}
                     </td>
@@ -201,7 +201,7 @@ export default function QuanLyHoDan() {
                         onClick={() => xemChiTiet(ho.id)}
                         className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg border border-slate-200 text-slate-600 text-xs font-semibold transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md hover:border-indigo-300 hover:text-indigo-600 active:translate-y-0 active:scale-[0.98]"
                       >
-                        <Eye size={14} /> Xem chi tiet
+                        <Eye size={14} /> Xem chi tiết
                       </button>
                     </td>
                   </tr>
@@ -226,7 +226,7 @@ export default function QuanLyHoDan() {
         <PopupThemHo
           danhSachThon={danhSachThon}
           dong={() => setHienThemHo(false)}
-          thanhCong={() => { setHienThemHo(false); setToast('Da them ho chuyen den'); taiDanhSach() }}
+          thanhCong={() => { setHienThemHo(false); setToast('Đã thêm hộ chuyển đến'); taiDanhSach() }}
         />
       )}
     </div>
@@ -262,7 +262,7 @@ function PopupChiTiet({ chiTiet, dangTai, dong, onRoiDi, onQuayLai }: any) {
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={dong} />
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 sticky top-0 bg-white">
-          <h2 className="text-lg font-bold text-slate-800">Ho so ho dan</h2>
+          <h2 className="text-lg font-bold text-slate-800">Hồ sơ hộ dân</h2>
           <button onClick={dong} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
             <X size={20} />
           </button>
@@ -270,22 +270,22 @@ function PopupChiTiet({ chiTiet, dangTai, dong, onRoiDi, onQuayLai }: any) {
 
         {dangTai || !chiTiet.cccd ? (
           <div className="flex items-center justify-center gap-2 py-16 text-slate-400">
-            <Loader2 size={20} className="animate-spin" /> Dang tai ho so...
+            <Loader2 size={20} className="animate-spin" /> Đang tải hồ sơ...
           </div>
         ) : (
           <div className="p-6 space-y-4">
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-50 text-indigo-700 text-xs">
-              <ShieldCheck size={14} /> Luot truy cap ho so nay da duoc ghi nhat ky de bao ve du lieu ca nhan.
+              <ShieldCheck size={14} /> Lượt truy cập hồ sơ này đã được ghi nhật ký để bảo vệ dữ liệu cá nhân.
             </div>
-            <DongThongTin icon={<Users size={16} />} nhan="Chu ho" giaTri={chiTiet.ho_ten_chu_ho} />
+            <DongThongTin icon={<Users size={16} />} nhan="Chủ hộ" giaTri={chiTiet.ho_ten_chu_ho} />
             <DongThongTin icon={<CreditCard size={16} />} nhan="CCCD" giaTri={chiTiet.cccd} />
-            <DongThongTin icon={<Phone size={16} />} nhan="So dien thoai" giaTri={chiTiet.so_dien_thoai} />
-            <DongThongTin icon={<MapPin size={16} />} nhan="Dia chi" giaTri={chiTiet.dia_chi || '—'} />
-            <DongThongTin icon={<Home size={16} />} nhan="Thon" giaTri={chiTiet.ten_thon} />
+            <DongThongTin icon={<Phone size={16} />} nhan="Số điện thoại" giaTri={chiTiet.so_dien_thoai} />
+            <DongThongTin icon={<MapPin size={16} />} nhan="Địa chỉ" giaTri={chiTiet.dia_chi || '—'} />
+            <DongThongTin icon={<Home size={16} />} nhan="Thôn" giaTri={chiTiet.ten_thon} />
             <DongThongTin
               icon={chiTiet.trang_thai === 'dang_cu_tru' ? <ShieldCheck size={16} /> : <LogOutIcon size={16} />}
-              nhan="Trang thai"
-              giaTri={chiTiet.trang_thai === 'dang_cu_tru' ? 'Dang cu tru' : `Da roi${chiTiet.ly_do_roi ? ' — ' + chiTiet.ly_do_roi : ''}`}
+              nhan="Trạng thái"
+              giaTri={chiTiet.trang_thai === 'dang_cu_tru' ? 'Đang cư trú' : `Đã rời${chiTiet.ly_do_roi ? ' — ' + chiTiet.ly_do_roi : ''}`}
             />
 
             <div className="pt-2 flex gap-3">
@@ -294,14 +294,14 @@ function PopupChiTiet({ chiTiet, dangTai, dong, onRoiDi, onQuayLai }: any) {
                   onClick={() => onRoiDi(chiTiet.id)}
                   className="flex-1 inline-flex items-center justify-center gap-2 h-11 px-4 rounded-lg bg-red-50 text-red-600 font-semibold text-sm border border-red-200 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md hover:bg-red-100 active:translate-y-0 active:scale-[0.98]"
                 >
-                  <LogOutIcon size={16} /> Danh dau roi di
+                  <LogOutIcon size={16} /> Đánh dấu rời đi
                 </button>
               ) : (
                 <button
                   onClick={() => onQuayLai(chiTiet.id)}
                   className="flex-1 inline-flex items-center justify-center gap-2 h-11 px-4 rounded-lg bg-emerald-50 text-emerald-600 font-semibold text-sm border border-emerald-200 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md hover:bg-emerald-100 active:translate-y-0 active:scale-[0.98]"
                 >
-                  <RotateCcw size={16} /> Cho quay lai cu tru
+                  <RotateCcw size={16} /> Cho quay lại cư trú
                 </button>
               )}
             </div>
@@ -337,7 +337,7 @@ function PopupThemHo({ danhSachThon, dong, thanhCong }: any) {
       thanhCong()
     } catch (err: any) {
       if (Array.isArray(err.detail)) setLoi(err.detail)
-      else setLoi([err.message || 'Them ho that bai'])
+      else setLoi([err.message || 'Thêm hộ thất bại'])
     } finally {
       setDangGui(false)
     }
@@ -348,7 +348,7 @@ function PopupThemHo({ danhSachThon, dong, thanhCong }: any) {
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={dong} />
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 sticky top-0 bg-white">
-          <h2 className="text-lg font-bold text-slate-800">Them ho chuyen den</h2>
+          <h2 className="text-lg font-bold text-slate-800">Thêm hộ chuyển đến</h2>
           <button onClick={dong} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
             <X size={20} />
           </button>
@@ -359,32 +359,32 @@ function PopupThemHo({ danhSachThon, dong, thanhCong }: any) {
               {loi.map((l, i) => <div key={i} className="flex items-center gap-1.5"><AlertCircle size={14} /> {l}</div>)}
             </div>
           )}
-          <ONhap nhan="Ho ten chu ho" giaTri={form.ho_ten} doi={(v: string) => setForm({ ...form, ho_ten: v })} placeholder="Nguyen Van A" />
-          <ONhap nhan="So CCCD (12 so)" giaTri={form.cccd} doi={(v: string) => setForm({ ...form, cccd: v })} placeholder="048025000031" />
-          <ONhap nhan="So dien thoai" giaTri={form.so_dien_thoai} doi={(v: string) => setForm({ ...form, so_dien_thoai: v })} placeholder="0901234567" />
+          <ONhap nhan="Họ tên chủ hộ" giaTri={form.ho_ten} doi={(v: string) => setForm({ ...form, ho_ten: v })} placeholder="Nguyễn Văn A" />
+          <ONhap nhan="Số CCCD (12 số)" giaTri={form.cccd} doi={(v: string) => setForm({ ...form, cccd: v })} placeholder="048025000031" />
+          <ONhap nhan="Số điện thoại" giaTri={form.so_dien_thoai} doi={(v: string) => setForm({ ...form, so_dien_thoai: v })} placeholder="0901234567" />
           <div>
-            <label className="block text-sm font-semibold text-slate-600 mb-1.5">Thon</label>
+            <label className="block text-sm font-semibold text-slate-600 mb-1.5">Thôn</label>
             <select
               value={form.thon_id}
               onChange={e => setForm({ ...form, thon_id: e.target.value })}
               className="w-full h-11 px-4 rounded-lg border border-slate-200 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
             >
-              <option value="">-- Chon thon --</option>
+              <option value="">-- Chọn thôn --</option>
               {danhSachThon.map((t: any) => <option key={t.id} value={t.id}>{t.ten_thon}</option>)}
             </select>
           </div>
-          <ONhap nhan="Dia chi (tuy chon)" giaTri={form.dia_chi} doi={(v: string) => setForm({ ...form, dia_chi: v })} placeholder="So nha, thon..." />
+          <ONhap nhan="Địa chỉ (tùy chọn)" giaTri={form.dia_chi} doi={(v: string) => setForm({ ...form, dia_chi: v })} placeholder="Số nhà, thôn..." />
 
           <div className="pt-2 flex gap-3">
             <button onClick={dong} className="flex-1 h-11 rounded-lg border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors">
-              Huy
+              Hủy
             </button>
             <button
               onClick={guiForm}
               disabled={dangGui}
               className="flex-1 inline-flex items-center justify-center gap-2 h-11 rounded-lg bg-indigo-600 text-white font-semibold text-sm disabled:opacity-60 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:bg-indigo-500 active:translate-y-0 active:scale-[0.98]"
             >
-              {dangGui ? <><Loader2 size={16} className="animate-spin" /> Dang luu...</> : <><Plus size={16} /> Them ho</>}
+              {dangGui ? <><Loader2 size={16} className="animate-spin" /> Đang lưu...</> : <><Plus size={16} /> Thêm hộ</>}
             </button>
           </div>
         </div>

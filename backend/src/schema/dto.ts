@@ -156,9 +156,6 @@ export function validateTongHopThon(tongHop: {
   const ct10 = Number(tongHop.ct10_tuoi_lao_dong)
   const ct11 = Number(tongHop.ct11_tham_gia_bhyt)
 
-  if (co('CT02') && ct01 > 0 && (ct02 < ct01 * 3 || ct02 > ct01 * 4.5)) {
-    errors.push('CT02: Tong nhan khau khong hop ly so voi tong so ho (ky vong 3-4.5 lan)')
-  }
   if (co('CT03') && ct03 > ct01) {
     errors.push('CT03: So ho ngheo khong the nhieu hon tong so ho')
   }

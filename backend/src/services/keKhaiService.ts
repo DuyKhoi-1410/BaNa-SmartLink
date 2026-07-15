@@ -2,6 +2,7 @@ import * as keKhaiHoRepo from '../repositories/keKhaiHoRepo.js'
 import * as keKhaiThonRepo from '../repositories/keKhaiThonRepo.js'
 import * as hoDanRepo from '../repositories/hoDanRepo.js'
 import * as thonRepo from '../repositories/thonRepo.js'
+import * as dotKeKhaiRepo from '../repositories/dotKeKhaiRepo.js'
 
 export async function keKhaiHo(data) {
   const existing = await keKhaiHoRepo.timTheoHoDanVaDot(data.ho_dan_id, data.dot_id)
@@ -69,4 +70,53 @@ export async function tongHopXa(dotId) {
       tien_do: { tong_ho: td.tong_ho || 0, da_ke_khai: td.da_ke_khai || 0, da_duyet: td.da_duyet || 0, tra_lai: td.tra_lai || 0 },
     }
   })
+}
+
+const TAT_CA_CT = ['CT01','CT02','CT03','CT04','CT05','CT06','CT07','CT08','CT09','CT10','CT11','CT12','CT13','CT14']
+const CT_FIELD_MAP = {
+  CT01: 'ct01_tong_ho', CT02: 'ct02_tong_nhan_khau', CT03: 'ct03_ho_ngheo',
+  CT04: 'ct04_ho_can_ngheo', CT05: 'ct05_nguoi_co_cong', CT06: 'ct06_bao_tro_xh',
+  CT07: 'ct07_tre_duoi_16', CT08: 'ct08_tre_hoan_canh', CT09: 'ct09_gia_dinh_van_hoa',
+  CT10: 'ct10_tuoi_lao_dong', CT11: 'ct11_tham_gia_bhyt',
+  CT12: 'ct12_thanh_vien_to_cnsc', CT13: 'ct13_huong_dan_dvc', CT14: 'ct14_bao_luc_gia_dinh',
+}
+
+export async function tongHopMoiNhat() {
+  const danhSachDot = await dotKeKhaiRepo.layTatCa()
+  if (danhSachDot.length === 0) return []
+
+  const ctChuaLap = new Set(TAT_CA_CT)
+  const ketQua: Record<number, Record<string, any>> = {}
+
+  for (const dot of danhSachDot) {
+    if (ctChuaLap.size === 0) break
+
+    const chiTieuDot: string[] = Array.isArray(dot.chi_tieu) ? dot.chi_tieu : TAT_CA_CT
+    const ctCanLay = chiTieuDot.filter(ct => ctChuaLap.has(ct))
+    if (ctCanLay.length === 0) continue
+
+    const duLieuDot = await tongHopXa(dot.id)
+
+    for (const thon of duLieuDot) {
+      if (!ketQua[thon.thon_id]) {
+        ketQua[thon.thon_id] = { thon_id: thon.thon_id, ten_thon: thon.ten_thon }
+      }
+      for (const ct of ctCanLay) {
+        const field = CT_FIELD_MAP[ct]
+        if (field && !(field in ketQua[thon.thon_id])) {
+          ketQua[thon.thon_id][field] = parseInt(thon[field]) || 0
+        }
+      }
+    }
+
+    ctCanLay.forEach(ct => ctChuaLap.delete(ct))
+  }
+
+  return Object.values(ketQua).map(thon => {
+    for (const ct of TAT_CA_CT) {
+      const field = CT_FIELD_MAP[ct]
+      if (!(field in thon)) thon[field] = 0
+    }
+    return thon
+  }).sort((a: any, b: any) => (a.ten_thon || '').localeCompare(b.ten_thon || ''))
 }

@@ -56,7 +56,7 @@ function boc(json: any, status: number) {
   if (json && typeof json === 'object' && 'success' in json) {
     if (json.success) return json.data
     // Loi envelope chuan. Giu ca `error` (chuoi message) de tuong thich code cu dung err.error
-    const msg = json.error?.message || 'Da co loi xay ra'
+    const msg = json.error?.message || 'Đã có lỗi xảy ra'
     throw { status, code: json.error?.code, message: msg, error: msg, detail: json.error?.detail }
   }
   // Response cu khong boc envelope (phong ho)
@@ -73,7 +73,7 @@ async function goi<T>(endpoint: string, options: RequestInit, coFormData = false
   try {
     res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers })
   } catch {
-    throw { status: 0, code: 'NETWORK_ERROR', message: 'Khong the ket noi den may chu. Vui long kiem tra mang va thu lai.', error: 'Khong the ket noi den may chu. Vui long kiem tra mang va thu lai.' }
+    throw { status: 0, code: 'NETWORK_ERROR', message: 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng và thử lại.', error: 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng và thử lại.' }
   }
 
   let json: any = null
@@ -86,7 +86,7 @@ async function goi<T>(endpoint: string, options: RequestInit, coFormData = false
   }
 
   if (!res.ok) {
-    throw boc(json ?? { success: false, error: { message: 'Loi ket noi' } }, res.status)
+    throw boc(json ?? { success: false, error: { message: 'Lỗi kết nối' } }, res.status)
   }
   return boc(json, res.status)
 }

@@ -30,6 +30,11 @@ router.get('/tong-hop/:dotId', authMiddleware, asyncHandler(async (req, res) => 
   ok(res, data)
 }))
 
+router.get('/tong-hop-moi-nhat', authMiddleware, asyncHandler(async (req, res) => {
+  const data = await keKhaiService.tongHopMoiNhat()
+  ok(res, data)
+}))
+
 router.get('/thon', authMiddleware, asyncHandler(async (req, res) => {
   const thons = await thonRepo.layTatCa()
   ok(res, thons)

@@ -546,7 +546,11 @@ export default function KeKhai() {
           })
         })
         if (danhSachUpload.length > 0) {
-          await Promise.allSettled(danhSachUpload)
+          const ketQua = await Promise.allSettled(danhSachUpload)
+          const soLoi = ketQua.filter(r => r.status === 'rejected').length
+          if (soLoi > 0) {
+            alert(`Cảnh báo: ${soLoi}/${ketQua.length} minh chứng tải lên thất bại. Vui lòng kiểm tra lại.`)
+          }
         }
       }
 

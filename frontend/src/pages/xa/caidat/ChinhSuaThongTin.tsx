@@ -93,7 +93,7 @@ export default function ChinhSuaThongTin() {
             <div className="relative group">
               <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-slate-200 bg-slate-100 flex items-center justify-center">
                 {avatarSrc ? (
-                  <img src={avatarSrc} alt="Avatar" className="w-full h-full object-cover" />
+                  <img src={avatarSrc} alt="Ảnh đại diện" className="w-full h-full object-cover" />
                 ) : (
                   <User size={32} className="text-slate-400" />
                 )}

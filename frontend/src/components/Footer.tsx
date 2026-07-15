@@ -48,7 +48,7 @@ export default function Footer() {
               <a href="#" className="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center hover:bg-white/30 transition-colors" title="Facebook">
                 <span className="text-sm font-bold">f</span>
               </a>
-              <a href="https://bana.danang.gov.vn/" target="_blank" rel="noopener noreferrer" className="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center hover:bg-white/30 transition-colors" title="Website">
+              <a href="https://bana.danang.gov.vn/" target="_blank" rel="noopener noreferrer" className="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center hover:bg-white/30 transition-colors" title="Trang web">
                 <Globe size={16} />
               </a>
             </div>

@@ -15,7 +15,7 @@ const BUCKET = 'minh-chung'
 const TEMP_DIR = path.join(process.cwd(), 'uploads', '_temp')
 if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true })
 
-const CT_DAN = ['CT02', 'CT03', 'CT04', 'CT05', 'CT06', 'CT08', 'CT11']
+const CT_DAN = ['CT02', 'CT03', 'CT04', 'CT05', 'CT06', 'CT07', 'CT08', 'CT10', 'CT11']
 const CT_THON = ['CT09', 'CT12', 'CT13', 'CT14']
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'application/pdf']
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB

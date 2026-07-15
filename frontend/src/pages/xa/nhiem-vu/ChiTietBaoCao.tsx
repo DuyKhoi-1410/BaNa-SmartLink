@@ -23,13 +23,13 @@ export default function ChiTietBaoCao({ baoCao, danhSachThon, quayLai }) {
   }, [baoCao?.id])
 
   const xoaDinhKem = async (fileId) => {
-    if (!confirm('Bạn có chắc muốn xóa file này?')) return
+    if (!confirm('Bạn có chắc muốn xóa tệp này?')) return
     setDangXoaId(fileId)
     try {
       await api.delete(`/attachments/file/${fileId}`)
       setDanhSachDinhKem(prev => prev.filter(f => f.id !== fileId))
     } catch (err) {
-      alert('Không thể xóa file: ' + (err.error || err.message || 'Lỗi'))
+      alert('Không thể xóa tệp: ' + (err.error || err.message || 'Lỗi'))
     } finally {
       setDangXoaId(null)
     }
@@ -47,7 +47,7 @@ export default function ChiTietBaoCao({ baoCao, danhSachThon, quayLai }) {
         setDanhSachDinhKem(prev => [...prev, record])
       }
     } catch (err) {
-      alert('Upload thất bại: ' + (err.error || err.message || 'Lỗi'))
+      alert('Tải lên thất bại: ' + (err.error || err.message || 'Lỗi'))
     } finally {
       setDangUpload(false)
       e.target.value = ''
@@ -196,7 +196,7 @@ export default function ChiTietBaoCao({ baoCao, danhSachThon, quayLai }) {
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
               >
                 {dangUpload ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-                Thêm file
+                Thêm tệp
               </button>
             </div>
           </div>
@@ -245,7 +245,7 @@ export default function ChiTietBaoCao({ baoCao, danhSachThon, quayLai }) {
               ))}
             </div>
           ) : (
-            <p className="text-xs text-slate-400 italic">Chưa có file đính kèm nào</p>
+            <p className="text-xs text-slate-400 italic">Chưa có tệp đính kèm nào</p>
           )}
         </div>
       </div>

@@ -113,7 +113,7 @@ export default function TrangChuXa() {
 
         const [tienDoAll, tongHopXa] = await Promise.all([
           api.get(`/reports/tien-do/${periods[0].id}`).catch(() => []),
-          api.get(`/reports/tong-hop/${periods[0].id}`).catch(() => []),
+          api.get('/reports/tong-hop-moi-nhat').catch(() => []),
         ])
 
         if (tienDoAll.length > 0) {
