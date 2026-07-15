@@ -40,11 +40,35 @@ function boVien(cell) {
   }
 }
 
+function chuanHoaTenThon(ten) {
+  if (!ten) return ten
+  return ten.split(' ').map(tu => tu.charAt(0).toUpperCase() + tu.slice(1)).join(' ')
+}
+
+function laySTTThon(ten) {
+  const match = ten.match(/(\d+)/)
+  return match ? parseInt(match[1]) : 999
+}
+
+function cotExcel(n) {
+  let result = ''
+  while (n > 0) {
+    n--
+    result = String.fromCharCode(65 + (n % 26)) + result
+    n = Math.floor(n / 26)
+  }
+  return result
+}
+
 export async function xuatExcelTongHop(dotId) {
   const dotKeKhai = await dotKeKhaiRepo.timTheoId(dotId)
   if (!dotKeKhai) throw new Error('Không tìm thấy đợt kê khai')
 
-  const duLieuThon = await keKhaiService.tongHopXa(dotId)
+  const duLieuThonRaw = await keKhaiService.tongHopXa(dotId)
+
+  const duLieuThon = duLieuThonRaw
+    .map(t => ({ ...t, ten_thon: chuanHoaTenThon(t.ten_thon) }))
+    .sort((a, b) => laySTTThon(a.ten_thon) - laySTTThon(b.ten_thon))
 
   // Lọc CT theo đợt: nếu đợt có chi_tieu thì chỉ xuất những CT đó, không thì xuất tất cả
   const chiTieuDot: string[] | null = dotKeKhai.chi_tieu
@@ -61,7 +85,7 @@ export async function xuatExcelTongHop(dotId) {
     properties: { defaultColWidth: 16 },
   })
 
-  const cotCuoi = String.fromCharCode(65 + duLieuThon.length + 2)
+  const cotCuoi = cotExcel(duLieuThon.length + 3)
   const loaiBaoCao = dotKeKhai.loai === 'dinh_ky' ? 'Định kỳ' : 'Đột xuất'
 
   // Tiêu đề chính
@@ -151,34 +175,27 @@ export async function xuatExcelTongHop(dotId) {
     }
   })
 
-  // Dòng tổng tiến độ
-  const rowTienDo = ws.getRow(6 + danhSachCTXuat.length + 1)
-  rowTienDo.height = 26
-  ws.getRow(6 + danhSachCTXuat.length).height = 10
+  // Dòng TỔNG (cộng dọc tất cả CT cho mỗi thôn)
+  const rowTong = ws.getRow(6 + danhSachCTXuat.length)
+  rowTong.height = 28
 
-  const tienDoValues = ['', 'Tiến độ kê khai']
+  const tongValues = ['', 'TỔNG']
   duLieuThon.forEach(t => {
-    const td = t.tien_do
-    if (td) {
-      tienDoValues.push(`${td.da_duyet}/${td.tong_ho} hộ`)
-    } else {
-      tienDoValues.push('—')
-    }
+    const tong = danhSachCTXuat.reduce((s, ct) => s + (parseInt(t[ct.key]) || 0), 0)
+    tongValues.push(tong)
   })
-  const tongDuyet = duLieuThon.reduce((s, t) => s + (parseInt(t.tien_do?.da_duyet) || 0), 0)
-  const tongHo = duLieuThon.reduce((s, t) => s + (parseInt(t.tien_do?.tong_ho) || 0), 0)
-  tienDoValues.push(`${tongDuyet}/${tongHo} hộ`)
-  rowTienDo.values = tienDoValues
+  const tongTatCa = duLieuThon.reduce((s, t) =>
+    s + danhSachCTXuat.reduce((s2, ct) => s2 + (parseInt(t[ct.key]) || 0), 0), 0)
+  tongValues.push(tongTatCa)
+  rowTong.values = tongValues
 
   for (let col = 1; col <= tongSoCot; col++) {
-    const cell = rowTienDo.getCell(col)
-    cell.font = { name: 'Times New Roman', size: 10, italic: true, color: { argb: 'FF059669' } }
-    cell.alignment = { horizontal: 'center', vertical: 'middle' }
+    const cell = rowTong.getCell(col)
+    cell.font = { name: 'Times New Roman', size: 11, bold: true, color: mauXanh }
+    cell.alignment = { horizontal: col <= 2 ? 'left' : 'center', vertical: 'middle' }
     boVien(cell)
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFECFDF5' } }
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } }
   }
-  rowTienDo.getCell(2).alignment = { horizontal: 'left', vertical: 'middle' }
-  rowTienDo.getCell(2).font = { name: 'Times New Roman', size: 10, bold: true, italic: true, color: { argb: 'FF059669' } }
 
   // === Sheet 2: Phân tích & Thống kê (Dashboard) ===
   const wsPT = workbook.addWorksheet('Phân tích', { properties: { defaultColWidth: 18 } })
