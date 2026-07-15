@@ -127,9 +127,8 @@ export async function xuatExcelTongHop(dotId) {
   ws.getColumn(1).width = 6
   ws.getColumn(2).width = 38
 
-  const headerValues = ['STT', 'Chỉ tiêu']
+  const headerValues = ['STT', 'Chỉ tiêu', 'TỔNG XÃ']
   duLieuThon.forEach(t => headerValues.push(t.ten_thon))
-  headerValues.push('TỔNG XÃ')
   headerRow.values = headerValues
 
   for (let col = 1; col <= tongSoCot; col++) {
@@ -149,9 +148,8 @@ export async function xuatExcelTongHop(dotId) {
 
     const tongXa = duLieuThon.reduce((s, t) => s + (parseInt(t[ct.key]) || 0), 0)
 
-    const values = [index + 1, `${ct.ma} — ${ct.ten}`]
+    const values = [index + 1, `${ct.ma} — ${ct.ten}`, tongXa]
     duLieuThon.forEach(t => values.push(parseInt(t[ct.key]) || 0))
-    values.push(tongXa)
     row.values = values
 
     const laMauNen = index % 2 === 0
@@ -166,7 +164,7 @@ export async function xuatExcelTongHop(dotId) {
         cell.font = { name: 'Times New Roman', size: 10, color: { argb: 'FF94A3B8' } }
       }
 
-      if (col === tongSoCot) {
+      if (col === 3) {
         cell.font = { name: 'Times New Roman', size: 11, bold: true, color: mauXanh }
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: mauVang }
       } else if (laMauNen) {
@@ -174,28 +172,6 @@ export async function xuatExcelTongHop(dotId) {
       }
     }
   })
-
-  // Dòng TỔNG (cộng dọc tất cả CT cho mỗi thôn)
-  const rowTong = ws.getRow(6 + danhSachCTXuat.length)
-  rowTong.height = 28
-
-  const tongValues = ['', 'TỔNG']
-  duLieuThon.forEach(t => {
-    const tong = danhSachCTXuat.reduce((s, ct) => s + (parseInt(t[ct.key]) || 0), 0)
-    tongValues.push(tong)
-  })
-  const tongTatCa = duLieuThon.reduce((s, t) =>
-    s + danhSachCTXuat.reduce((s2, ct) => s2 + (parseInt(t[ct.key]) || 0), 0), 0)
-  tongValues.push(tongTatCa)
-  rowTong.values = tongValues
-
-  for (let col = 1; col <= tongSoCot; col++) {
-    const cell = rowTong.getCell(col)
-    cell.font = { name: 'Times New Roman', size: 11, bold: true, color: mauXanh }
-    cell.alignment = { horizontal: col <= 2 ? 'left' : 'center', vertical: 'middle' }
-    boVien(cell)
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } }
-  }
 
   // === Sheet 2: Phân tích & Thống kê (Dashboard) ===
   const wsPT = workbook.addWorksheet('Phân tích', { properties: { defaultColWidth: 18 } })
