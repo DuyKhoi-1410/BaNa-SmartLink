@@ -140,7 +140,7 @@ export default function TrangChuXa() {
           setTongHopCT(danhSachCT.map(ct => ({
             ma: ct.ma,
             ten: ct.ten,
-            giaTri: tongXa[ct.ma] || 0,
+            giaTri: tongXa[ct.ma] ?? 0,
           })))
         }
       } catch (err) {
@@ -195,8 +195,8 @@ export default function TrangChuXa() {
   const ctTop5ThonHienTai = danhSachCT.find(ct => ct.ma === ctTop5Thon)
 
   const cardKPI = [
-    { ten: 'Tổng số hộ dân', giaTri: tongHopCT.find(d => d.ma === 'CT01')?.giaTri || 0, icon: Home, mauIcon: 'text-rose-500', mauNen: 'bg-rose-50' },
-    { ten: 'Tổng số nhân khẩu', giaTri: tongHopCT.find(d => d.ma === 'CT02')?.giaTri || 0, icon: Users, mauIcon: 'text-emerald-500', mauNen: 'bg-emerald-50' },
+    { ten: 'Tổng số hộ dân', giaTri: tongHopCT.find(d => d.ma === 'CT01')?.giaTri ?? 0, icon: Home, mauIcon: 'text-rose-500', mauNen: 'bg-rose-50' },
+    { ten: 'Tổng số nhân khẩu', giaTri: tongHopCT.find(d => d.ma === 'CT02')?.giaTri ?? 0, icon: Users, mauIcon: 'text-emerald-500', mauNen: 'bg-emerald-50' },
     { ten: 'Nhiệm vụ đang hoạt động', giaTri: soNhiemVuHoatDong, icon: FileText, mauIcon: 'text-amber-500', mauNen: 'bg-amber-50' },
   ]
 

@@ -335,6 +335,7 @@ export function toDeclarationResponse(row) {
     trang_thai: row.trang_thai,
     ly_do_tra_lai: row.ly_do_tra_lai,
     chi_tieu_tra_lai: row.chi_tieu_tra_lai,
+    danh_sach_thay_doi: row.danh_sach_thay_doi || null,
     ghi_chu: row.ghi_chu || null,
     ngay_ke_khai: row.ngay_ke_khai,
     ngay_duyet: row.ngay_duyet,

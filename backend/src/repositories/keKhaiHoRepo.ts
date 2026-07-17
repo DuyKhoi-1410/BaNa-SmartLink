@@ -53,9 +53,9 @@ export async function layTheoChuHo(chuHoId) {
 
 export async function taoMoi(data) {
   const result = await query(
-    `INSERT INTO ke_khai_ho (dot_id, ho_dan_id, phien_ban, ct02_tong_nhan_khau, ct03_ho_ngheo, ct04_ho_can_ngheo, ct05_nguoi_co_cong, ct06_bao_tro_xh, ct07_tre_duoi_16, ct08_tre_hoan_canh, ct10_tuoi_lao_dong, ct11_tham_gia_bhyt, trang_thai, nguoi_ke_khai_id, ghi_chu, ngay_ke_khai)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,NOW()) RETURNING *`,
-    [data.dot_id, data.ho_dan_id, data.phien_ban || 1, data.ct02_tong_nhan_khau, data.ct03_ho_ngheo, data.ct04_ho_can_ngheo, data.ct05_nguoi_co_cong, data.ct06_bao_tro_xh, data.ct07_tre_duoi_16, data.ct08_tre_hoan_canh, data.ct10_tuoi_lao_dong, data.ct11_tham_gia_bhyt, data.trang_thai || 'da_ke_khai', data.nguoi_ke_khai_id, data.ghi_chu || null]
+    `INSERT INTO ke_khai_ho (dot_id, ho_dan_id, phien_ban, ct02_tong_nhan_khau, ct03_ho_ngheo, ct04_ho_can_ngheo, ct05_nguoi_co_cong, ct06_bao_tro_xh, ct07_tre_duoi_16, ct08_tre_hoan_canh, ct10_tuoi_lao_dong, ct11_tham_gia_bhyt, trang_thai, nguoi_ke_khai_id, ghi_chu, danh_sach_thay_doi, ngay_ke_khai)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,NOW()) RETURNING *`,
+    [data.dot_id, data.ho_dan_id, data.phien_ban || 1, data.ct02_tong_nhan_khau, data.ct03_ho_ngheo, data.ct04_ho_can_ngheo, data.ct05_nguoi_co_cong, data.ct06_bao_tro_xh, data.ct07_tre_duoi_16, data.ct08_tre_hoan_canh, data.ct10_tuoi_lao_dong, data.ct11_tham_gia_bhyt, data.trang_thai || 'da_ke_khai', data.nguoi_ke_khai_id, data.ghi_chu || null, data.danh_sach_thay_doi ? JSON.stringify(data.danh_sach_thay_doi) : null]
   )
   return result.rows[0]
 }

@@ -64,6 +64,7 @@ export default function ChiTietNhiemVuThon({ nhiemVu, thonId, quayLai }) {
           trangThaiDuyet: trangThaiMap[kk.trang_thai] || 'cho-duyet',
           lyDoTuChoi: kk.ly_do_tra_lai,
           ghiChu: kk.ghi_chu || null,
+          danhSachThayDoi: kk.danh_sach_thay_doi || null,
         }
       })
       setDanhSachHo(dsHo)

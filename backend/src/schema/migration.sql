@@ -106,6 +106,7 @@ CREATE TABLE ke_khai_ho (
   trang_thai VARCHAR(30) DEFAULT 'chua_ke_khai' CHECK (trang_thai IN ('chua_ke_khai','da_ke_khai','da_duyet','tra_lai','giu_nguyen')),
   ly_do_tra_lai TEXT,
   chi_tieu_tra_lai JSONB DEFAULT NULL,
+  danh_sach_thay_doi JSONB DEFAULT NULL,
   ghi_chu TEXT,
   nguoi_ke_khai_id INTEGER REFERENCES nguoi_dung(id),
   ngay_ke_khai TIMESTAMPTZ,

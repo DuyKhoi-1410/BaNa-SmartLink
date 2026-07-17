@@ -194,15 +194,15 @@ export default function KeKhai() {
   const chuyenKeKhaiThanhDuLieu = (kk) => {
     if (!kk) return null
     return {
-      CT02: String(kk.ct02_tong_nhan_khau || ''),
+      CT02: kk.ct02_tong_nhan_khau != null ? String(kk.ct02_tong_nhan_khau) : '',
       CT03: kk.ct03_ho_ngheo === 1 ? true : kk.ct03_ho_ngheo === 0 ? false : null,
       CT04: kk.ct04_ho_can_ngheo === 1 ? true : kk.ct04_ho_can_ngheo === 0 ? false : null,
-      CT05: String(kk.ct05_nguoi_co_cong || ''),
-      CT06: String(kk.ct06_bao_tro_xh || ''),
-      CT07: String(kk.ct07_tre_duoi_16 || ''),
-      CT08: String(kk.ct08_tre_hoan_canh || ''),
-      CT10: String(kk.ct10_tuoi_lao_dong || ''),
-      CT11: String(kk.ct11_tham_gia_bhyt || ''),
+      CT05: kk.ct05_nguoi_co_cong != null ? String(kk.ct05_nguoi_co_cong) : '',
+      CT06: kk.ct06_bao_tro_xh != null ? String(kk.ct06_bao_tro_xh) : '',
+      CT07: kk.ct07_tre_duoi_16 != null ? String(kk.ct07_tre_duoi_16) : '',
+      CT08: kk.ct08_tre_hoan_canh != null ? String(kk.ct08_tre_hoan_canh) : '',
+      CT10: kk.ct10_tuoi_lao_dong != null ? String(kk.ct10_tuoi_lao_dong) : '',
+      CT11: kk.ct11_tham_gia_bhyt != null ? String(kk.ct11_tham_gia_bhyt) : '',
     }
   }
 
@@ -262,7 +262,8 @@ export default function KeKhai() {
         setDangKeKhaiLai(false)
         setDanhSachCTCanLai([])
         const banDauTT = {}
-        ctCuaDot.forEach(ct => { banDauTT[ct.ma] = 'giu' })
+        const ctMoi = DANH_SACH_CT.filter(ct => (dot.chiTieu || []).includes(ct.ma))
+        ctMoi.forEach(ct => { banDauTT[ct.ma] = 'giu' })
         setTrangThaiCT(banDauTT)
       } else {
         const giaTriBanDau = {}
@@ -283,6 +284,26 @@ export default function KeKhai() {
     setDangChot({})
     setGhiChu('')
     setMoPopup(true)
+  }
+
+  const layGoiY = (ma: string) => {
+    const ct02Val = parseInt(duLieuCT['CT02'], 10)
+    const ct07Val = parseInt(duLieuCT['CT07'], 10)
+    const coCT02 = chiTieuDot.includes('CT02') && !isNaN(ct02Val) && ct02Val > 0
+    const coCT07 = chiTieuDot.includes('CT07') && !isNaN(ct07Val) && ct07Val > 0
+
+    switch (ma) {
+      case 'CT02': return 'Nhập ít nhất 1 (kể cả chủ hộ)'
+      case 'CT03': return 'Nếu chọn "Có" thì CT04 (Hộ cận nghèo) phải chọn "Không"'
+      case 'CT04': return 'Nếu chọn "Có" thì CT03 (Hộ nghèo) phải chọn "Không"'
+      case 'CT05': return coCT02 ? `Không vượt quá ${ct02Val} người (tổng nhân khẩu)` : 'Không vượt quá tổng nhân khẩu (CT02)'
+      case 'CT06': return coCT02 ? `Không vượt quá ${ct02Val} người (tổng nhân khẩu)` : 'Không vượt quá tổng nhân khẩu (CT02)'
+      case 'CT07': return coCT02 ? `Không vượt quá ${ct02Val} người (tổng nhân khẩu)` : 'Không vượt quá tổng nhân khẩu (CT02)'
+      case 'CT08': return coCT07 ? `Không vượt quá ${ct07Val} trẻ (số trẻ em dưới 16 tuổi)` : 'Không vượt quá số trẻ em dưới 16 tuổi (CT07)'
+      case 'CT10': return coCT02 ? `Không vượt quá ${ct02Val} người (tổng nhân khẩu)` : 'Không vượt quá tổng nhân khẩu (CT02)'
+      case 'CT11': return coCT02 ? `Không vượt quá ${ct02Val} người (tổng nhân khẩu)` : 'Không vượt quá tổng nhân khẩu (CT02)'
+      default: return null
+    }
   }
 
   const capNhatGiaTri = (ma: any, giaTri: any) => {
@@ -364,7 +385,7 @@ export default function KeKhai() {
   const kiemTraDuLieu = () => {
     const loi: Record<string, any> = {}
     ctCuaDot.forEach(ct => {
-      if (dangXemLai && trangThaiCT[ct.ma] === 'giu') return
+      if (dangXemLai && trangThaiCT[ct.ma] !== 'doi') return
       if (dangKeKhaiLai && !danhSachCTCanLai.find(item => item.ma === ct.ma)) return
       const val = duLieuCT[ct.ma]
       if (ct.loaiNhap === 'co-khong') {
@@ -399,7 +420,7 @@ export default function KeKhai() {
     if (coCT('CT11') && coCT('CT02') && !loi.CT11 && !loi.CT02 && so('CT11') > so('CT02')) loi.CT11 = 'Số người tham gia BHYT không thể nhiều hơn tổng nhân khẩu'
 
     ctCuaDot.forEach(ct => {
-      if (dangXemLai && trangThaiCT[ct.ma] === 'giu') return
+      if (dangXemLai && trangThaiCT[ct.ma] !== 'doi') return
       if (dangKeKhaiLai && !danhSachCTCanLai.find(item => item.ma === ct.ma)) return
       if (!ct.minhChung) return
       const canMinhChung =
@@ -419,7 +440,7 @@ export default function KeKhai() {
     buoc.danhSachMa.forEach(ma => {
       const ct = DANH_SACH_CT.find(c => c.ma === ma)
       if (!ct) return
-      if (dangXemLai && trangThaiCT[ma] === 'giu') return
+      if (dangXemLai && trangThaiCT[ma] !== 'doi') return
       if (dangKeKhaiLai && !danhSachCTCanLai.find(item => item.ma === ma)) return
       const val = duLieuCT[ma]
       if (ct.loaiNhap === 'co-khong') {
@@ -456,7 +477,7 @@ export default function KeKhai() {
       loi.CT11 = 'Số người tham gia BHYT không thể nhiều hơn tổng nhân khẩu'
 
     buoc.danhSachMa.forEach(ma => {
-      if (dangXemLai && trangThaiCT[ma] === 'giu') return
+      if (dangXemLai && trangThaiCT[ma] !== 'doi') return
       if (dangKeKhaiLai && !danhSachCTCanLai.find(item => item.ma === ma)) return
       const ct = DANH_SACH_CT.find(c => c.ma === ma)
       if (!ct || !ct.minhChung) return
@@ -515,6 +536,10 @@ export default function KeKhai() {
         return parseInt(duLieuCT[ma], 10) || 0
       }
 
+      const dsSua = dangXemLai
+        ? Object.entries(trangThaiCT).filter(([, v]) => v === 'doi').map(([ma]) => ma)
+        : null
+
       const body = {
         dot_id: dotDangChon.id,
         ho_dan_id: hoDanId,
@@ -528,6 +553,7 @@ export default function KeKhai() {
         ct10_tuoi_lao_dong: so('CT10'),
         ct11_tham_gia_bhyt: so('CT11'),
         ghi_chu: ghiChu.trim() || null,
+        danh_sach_thay_doi: dsSua,
       }
 
       const keKhaiMoi = await api.post('/declarations', body)
@@ -554,9 +580,10 @@ export default function KeKhai() {
         }
       }
 
+      const trangThaiMoi = (dsSua && dsSua.length === 0) ? 'da-ke-khai' : 'cho-duyet'
       setDuLieuDaNop(prev => ({ ...prev, [dotDangChon.id]: { ...duLieuCT } }))
       setDanhSachDot(prev => prev.map(d =>
-        d.id === dotDangChon.id ? { ...d, trangThai: 'cho-duyet', ghiChuChung: undefined, danhSachTraLai: undefined } : d
+        d.id === dotDangChon.id ? { ...d, trangThai: trangThaiMoi, ghiChuChung: undefined, danhSachTraLai: undefined } : d
       ))
       setMoPopup(false)
       setDangXemLai(false)
@@ -960,7 +987,8 @@ export default function KeKhai() {
             if (ct.loaiNhap === 'co-khong') {
               return duLieuCT[ct.ma] === true ? 'Có' : duLieuCT[ct.ma] === false ? 'Không' : '—'
             }
-            return duLieuCT[ct.ma] || '—'
+            const val = duLieuCT[ct.ma]
+            return val === '' || val === null || val === undefined ? '—' : String(val)
           }
 
           const daSua = dangXemLai && Object.keys(duLieuGoc).length > 0 && duLieuCT[ct.ma] !== duLieuGoc[ct.ma]
@@ -1140,6 +1168,13 @@ export default function KeKhai() {
                           : 'border-slate-200 bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-100'
                         }`}
                     />
+                  )}
+
+                  {!dangReadOnly && layGoiY(ct.ma) && (
+                    <p className="mt-1.5 text-xs text-slate-400 flex items-center gap-1">
+                      <Info size={11} className="flex-shrink-0" />
+                      {layGoiY(ct.ma)}
+                    </p>
                   )}
 
                   {coLoi && (
@@ -1340,9 +1375,9 @@ export default function KeKhai() {
                     <div key={ct.ma} className="flex items-center gap-2 p-2 bg-amber-50 rounded-lg border border-amber-100">
                       <span className={`text-xs font-bold px-1.5 py-0.5 rounded bg-${ct.mau}-100 text-${ct.mau}-700`}>{ct.ma}</span>
                       <span className="text-xs text-slate-700 flex-1">{ct.ten}</span>
-                      <span className="text-xs text-slate-400">{ct.loaiNhap === 'co-khong' ? (duLieuGoc[ct.ma] === true ? 'Có' : duLieuGoc[ct.ma] === false ? 'Không' : '—') : String(duLieuGoc[ct.ma] ?? '—')}</span>
+                      <span className="text-xs text-slate-400">{ct.loaiNhap === 'co-khong' ? (duLieuGoc[ct.ma] === true ? 'Có' : duLieuGoc[ct.ma] === false ? 'Không' : '—') : (duLieuGoc[ct.ma] === '' || duLieuGoc[ct.ma] === null || duLieuGoc[ct.ma] === undefined ? '—' : String(duLieuGoc[ct.ma]))}</span>
                       <span className="text-xs text-slate-400">→</span>
-                      <span className="text-xs font-semibold text-amber-700">{ct.loaiNhap === 'co-khong' ? (duLieuCT[ct.ma] === true ? 'Có' : duLieuCT[ct.ma] === false ? 'Không' : '—') : String(duLieuCT[ct.ma] ?? '—')}</span>
+                      <span className="text-xs font-semibold text-amber-700">{ct.loaiNhap === 'co-khong' ? (duLieuCT[ct.ma] === true ? 'Có' : duLieuCT[ct.ma] === false ? 'Không' : '—') : (duLieuCT[ct.ma] === '' || duLieuCT[ct.ma] === null || duLieuCT[ct.ma] === undefined ? '—' : String(duLieuCT[ct.ma]))}</span>
                     </div>
                   ))}
                 </div>

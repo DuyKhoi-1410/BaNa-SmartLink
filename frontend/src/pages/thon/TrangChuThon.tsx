@@ -76,14 +76,17 @@ export default function TrangChuThon() {
           ? periods.map(dot => api.get(`/reports/tien-do/${dot.id}?thon_id=${thonId}`).catch(() => ({ tong_ho: 0, da_ke_khai: 0, da_duyet: 0, tra_lai: 0 })))
           : periods.map(() => Promise.resolve({ tong_ho: 0, da_ke_khai: 0, da_duyet: 0, tra_lai: 0 }))
 
-        const tongHopPromise = (thonId && periods.length > 0)
-          ? api.get(`/reports/tong-hop/${periods[0].id}?thon_id=${thonId}`).catch(() => null)
-          : Promise.resolve(null)
+        const tongHopPromise = thonId
+          ? api.get('/reports/tong-hop-moi-nhat').catch(() => [])
+          : Promise.resolve([])
 
-        const [tienDoResults, tongHop] = await Promise.all([
+        const [tienDoResults, tongHopAll] = await Promise.all([
           Promise.all(tienDoPromises),
           tongHopPromise,
         ])
+        const tongHop = Array.isArray(tongHopAll)
+          ? tongHopAll.find(t => t.thon_id === thonId) || null
+          : null
 
         const nhiemVuList = []
         const tienDoList = []
@@ -183,7 +186,7 @@ export default function TrangChuThon() {
   const duLieuBieuDo = danhSachCT.map(ct => ({
     ma: ct.ma,
     ten: ct.ten,
-    giaTri: duLieuThon[ct.ma] || 0,
+    giaTri: duLieuThon[ct.ma] ?? 0,
   }))
 
   if (dangTai) {
@@ -239,7 +242,7 @@ export default function TrangChuThon() {
             <Home size={28} className="text-rose-500" />
           </div>
           <div>
-            <span className="text-2xl font-extrabold text-slate-800 block">{dinhDangSo(duLieuThon.CT01 || 0)}</span>
+            <span className="text-2xl font-extrabold text-slate-800 block">{dinhDangSo(duLieuThon.CT01 ?? 0)}</span>
             <span className="text-base text-slate-500 leading-tight">Tổng số hộ dân</span>
           </div>
         </div>
@@ -250,7 +253,7 @@ export default function TrangChuThon() {
             <Users size={28} className="text-emerald-500" />
           </div>
           <div>
-            <span className="text-2xl font-extrabold text-slate-800 block">{dinhDangSo(duLieuThon.CT02 || 0)}</span>
+            <span className="text-2xl font-extrabold text-slate-800 block">{dinhDangSo(duLieuThon.CT02 ?? 0)}</span>
             <span className="text-base text-slate-500 leading-tight">Tổng số nhân khẩu</span>
           </div>
         </div>

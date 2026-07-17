@@ -7,7 +7,26 @@ import * as dotKeKhaiRepo from '../repositories/dotKeKhaiRepo.js'
 export async function keKhaiHo(data) {
   const existing = await keKhaiHoRepo.timTheoHoDanVaDot(data.ho_dan_id, data.dot_id)
   const phienBan = existing ? existing.phien_ban + 1 : 1
-  return keKhaiHoRepo.taoMoi({ ...data, phien_ban: phienBan })
+
+  const dsSua = data.danh_sach_thay_doi
+  const giuNguyenHet = Array.isArray(dsSua) && dsSua.length === 0
+
+  const trangThai = giuNguyenHet ? 'da_duyet' : (data.trang_thai || 'da_ke_khai')
+
+  const kk = await keKhaiHoRepo.taoMoi({
+    ...data,
+    phien_ban: phienBan,
+    trang_thai: trangThai,
+    danh_sach_thay_doi: Array.isArray(dsSua) ? dsSua : null,
+  })
+
+  if (giuNguyenHet) {
+    await keKhaiHoRepo.duyetKeKhai(kk.id, data.nguoi_ke_khai_id)
+  }
+
+  return giuNguyenHet
+    ? await keKhaiHoRepo.timTheoId(kk.id)
+    : kk
 }
 
 export async function layKeKhaiTheoDot(dotId, thonId) {
@@ -85,31 +104,38 @@ export async function tongHopMoiNhat() {
   const danhSachDot = await dotKeKhaiRepo.layTatCa()
   if (danhSachDot.length === 0) return []
 
-  const ctChuaLap = new Set(TAT_CA_CT)
+  const CT_THON = new Set(['CT09', 'CT12', 'CT13', 'CT14'])
   const ketQua: Record<number, Record<string, any>> = {}
+  const daLapThon: Record<number, Set<string>> = {}
 
   for (const dot of danhSachDot) {
-    if (ctChuaLap.size === 0) break
-
     const chiTieuDot: string[] = Array.isArray(dot.chi_tieu) ? dot.chi_tieu : TAT_CA_CT
-    const ctCanLay = chiTieuDot.filter(ct => ctChuaLap.has(ct))
-    if (ctCanLay.length === 0) continue
-
     const duLieuDot = await tongHopXa(dot.id)
+    const thonRecords = await keKhaiThonRepo.layTheoDot(dot.id)
+    const coRecordThon = new Set(thonRecords.map(t => t.thon_id))
 
     for (const thon of duLieuDot) {
       if (!ketQua[thon.thon_id]) {
         ketQua[thon.thon_id] = { thon_id: thon.thon_id, ten_thon: thon.ten_thon }
+        daLapThon[thon.thon_id] = new Set()
       }
-      for (const ct of ctCanLay) {
+
+      const coDuLieuHo = (thon.tien_do?.da_duyet || 0) > 0
+      const coDuLieuThon = coRecordThon.has(thon.thon_id)
+
+      for (const ct of chiTieuDot) {
+        if (daLapThon[thon.thon_id].has(ct)) continue
         const field = CT_FIELD_MAP[ct]
-        if (field && !(field in ketQua[thon.thon_id])) {
-          ketQua[thon.thon_id][field] = parseInt(thon[field]) || 0
-        }
+        if (!field) continue
+
+        const laCTThon = CT_THON.has(ct)
+        if (laCTThon && !coDuLieuThon) continue
+        if (!laCTThon && !coDuLieuHo) continue
+
+        ketQua[thon.thon_id][field] = parseInt(thon[field]) || 0
+        daLapThon[thon.thon_id].add(ct)
       }
     }
-
-    ctCanLay.forEach(ct => ctChuaLap.delete(ct))
   }
 
   return Object.values(ketQua).map(thon => {
