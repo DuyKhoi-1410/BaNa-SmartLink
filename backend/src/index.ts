@@ -15,7 +15,7 @@ import reportsRouter from './api/reports.js'
 import evidenceRouter from './api/evidence.js'
 import attachmentsRouter from './api/attachments.js'
 import nhanKhauRouter from './api/nhanKhau.js'
-import chatbotRouter from './api/chatbot.js'
+import ragRouter from './api/rag.js'
 import { nhacHanNop } from './services/thongBaoService.js'
 import { errorHandler } from './utils/response.js'
 
@@ -49,7 +49,7 @@ app.use('/api/v1/reports', reportsRouter)
 app.use('/api/v1/evidence', evidenceRouter)
 app.use('/api/v1/attachments', attachmentsRouter)
 app.use('/api/v1/nhan-khau', nhanKhauRouter)
-app.use('/api/v1/chatbot', chatbotRouter)
+app.use('/api/v1/rag', ragRouter)
 
 // 404 cho route khong ton tai
 app.use((_req, res) => {

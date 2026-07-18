@@ -69,9 +69,9 @@ export default function ChatBot() {
     setDangXuLy(true)
 
     try {
-      const endpoint = dangHoiSoLieu ? '/chatbot/ask-data' : '/chatbot/ask'
-      const res = await api.post<{ data: { answer: string } }>(endpoint, { cauHoi: noiDung.trim() })
-      const traLoi = res.data?.answer || 'Xin lỗi, tôi không thể trả lời lúc này.'
+      const endpoint = dangHoiSoLieu ? '/rag/ask-data' : '/rag/ask'
+      const res = await api.post<{ answer: string }>(endpoint, { cauHoi: noiDung.trim() })
+      const traLoi = res.answer || 'Xin lỗi, tôi không thể trả lời lúc này.'
       setTinNhan(prev => [...prev, {
         id: Date.now() + 1,
         noiDung: traLoi,

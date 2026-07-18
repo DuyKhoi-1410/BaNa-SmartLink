@@ -1,3 +1,4 @@
+// Chia tai lieu PDF Q&A thanh cac chunk theo vai tro (dan/thon/xa/chung)
 export interface Chunk {
   noiDung: string
   vaiTro: string
@@ -10,7 +11,6 @@ export interface Chunk {
 
 export function chunkPdfQA(text: string, fileName: string): Chunk[] {
   const chunks: Chunk[] = []
-
   const sections = detectSections(text)
 
   for (const section of sections) {

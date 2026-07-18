@@ -24,6 +24,9 @@ dist-ssr
 # Upload files
 backend/uploads/
 
+# Backup du lieu re-embed (chua toan bo noi dung tai lieu, khong commit)
+backend/backup_tai_lieu_chunks.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
