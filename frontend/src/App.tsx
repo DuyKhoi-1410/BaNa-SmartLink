@@ -1,9 +1,9 @@
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Agentation } from 'agentation'
-import LayoutDan from './components/LayoutDan'
-import LayoutXa from './components/LayoutXa'
-import LayoutThon from './components/LayoutThon'
+const LayoutDan = lazy(() => import('./components/LayoutDan'))
+const LayoutXa = lazy(() => import('./components/LayoutXa'))
+const LayoutThon = lazy(() => import('./components/LayoutThon'))
 import ManHinhTai from './components/ManHinhTai'
 import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider } from './context/AuthContext'

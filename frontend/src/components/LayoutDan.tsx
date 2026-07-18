@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { Home, FileText, Bell, HelpCircle, Settings, ChevronDown, User, LogOut, Search, X, BookOpen, Shield, History, Menu } from 'lucide-react'
 import Footer from './Footer'
+import ChatBot from './ChatBot'
 import logoIcon from '../assets/LOGO.png'
 import logoChu from '../assets/CHỮ.PNG'
 import { useAuth } from '../context/AuthContext'
@@ -369,6 +370,7 @@ export default function LayoutDan() {
         <Outlet />
       </main>
 
+      <ChatBot />
       <Footer />
     </div>
   )
