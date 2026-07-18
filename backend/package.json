@@ -13,6 +13,7 @@
     "test:api": "tsx src/test/testApi.ts"
   },
   "dependencies": {
+    "@google/genai": "^2.12.0",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
@@ -20,6 +21,7 @@
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.2.0",
+    "pdf-parse": "^1.1.1",
     "pg": "^8.13.1"
   },
   "devDependencies": {
