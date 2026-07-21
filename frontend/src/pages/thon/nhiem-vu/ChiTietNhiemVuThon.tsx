@@ -242,42 +242,53 @@ export default function ChiTietNhiemVuThon({ nhiemVu, thonId, quayLai }) {
 
         {/* Tiến độ — thanh phân đoạn 3 màu */}
         <div className="mt-4">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
-              <Users size={15} className="text-blue-500" />
-              {thongKe.daNop}/{thongKe.tongHo} hộ đã nộp
-            </span>
-          </div>
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-4 text-xs">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
-                <span className="text-emerald-700 font-semibold">{thongKe.daDuyet} đã duyệt</span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block" />
-                <span className="text-amber-700 font-semibold">{thongKe.choDuyet} chờ duyệt</span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-slate-300 inline-block" />
-                <span className="text-slate-500 font-semibold">{thongKe.chuaNop} chưa nộp</span>
+          {nhiemVu.danKhongCanKe ? (
+            <div className="flex items-center gap-2 py-1">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-500">
+                <CheckCircle2 size={13} />
+                Đợt này chỉ thôn kê khai — dân không cần kê
               </span>
             </div>
-          </div>
-          <div className="h-3 bg-slate-100 rounded-full overflow-hidden flex">
-            {thongKe.ptDaDuyet > 0 && (
-              <div
-                className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all duration-700"
-                style={{ width: `${thongKe.ptDaDuyet}%` }}
-              />
-            )}
-            {thongKe.ptChoDuyet > 0 && (
-              <div
-                className="h-full bg-gradient-to-r from-amber-300 to-amber-400 transition-all duration-700"
-                style={{ width: `${thongKe.ptChoDuyet}%` }}
-              />
-            )}
-          </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
+                  <Users size={15} className="text-blue-500" />
+                  {thongKe.daNop}/{thongKe.tongHo} hộ đã nộp
+                </span>
+              </div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-4 text-xs">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
+                    <span className="text-emerald-700 font-semibold">{thongKe.daDuyet} đã duyệt</span>
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block" />
+                    <span className="text-amber-700 font-semibold">{thongKe.choDuyet} chờ duyệt</span>
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-slate-300 inline-block" />
+                    <span className="text-slate-500 font-semibold">{thongKe.chuaNop} chưa nộp</span>
+                  </span>
+                </div>
+              </div>
+              <div className="h-3 bg-slate-100 rounded-full overflow-hidden flex">
+                {thongKe.ptDaDuyet > 0 && (
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all duration-700"
+                    style={{ width: `${thongKe.ptDaDuyet}%` }}
+                  />
+                )}
+                {thongKe.ptChoDuyet > 0 && (
+                  <div
+                    className="h-full bg-gradient-to-r from-amber-300 to-amber-400 transition-all duration-700"
+                    style={{ width: `${thongKe.ptChoDuyet}%` }}
+                  />
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Chỉ tiêu áp dụng */}
@@ -401,8 +412,18 @@ export default function ChiTietNhiemVuThon({ nhiemVu, thonId, quayLai }) {
           </h2>
         </div>
 
+        {nhiemVu.danKhongCanKe ? (
+          <div className="text-center py-10">
+            <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+              <CheckCircle2 size={24} className="text-slate-300" />
+            </div>
+            <p className="text-slate-500 font-semibold">Đợt này chỉ có chỉ tiêu thôn kê khai</p>
+            <p className="text-sm text-slate-400 mt-1">Dân không cần kê khai cho đợt này</p>
+          </div>
+        ) : null}
+
         {/* Thẻ thống kê 3 trạng thái */}
-        {(() => {
+        {!nhiemVu.danKhongCanKe && (() => {
           const hoChuaNop = danhSachHo.filter(h => !h.daNop || h.trangThaiDuyet === 'tu-choi')
           const hoChoDuyet = danhSachHo.filter(h => h.daNop && (h.trangThaiDuyet === 'cho-duyet' || !h.trangThaiDuyet) && h.trangThaiDuyet !== 'tu-choi')
           const hoDaDuyet = danhSachHo.filter(h => h.daNop && h.trangThaiDuyet === 'da-duyet')

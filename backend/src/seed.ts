@@ -58,11 +58,15 @@ async function seed() {
   try {
     console.log('Seeding database (theo USER DEMO.xlsx)...')
 
-    // 1. 10 thon (ten theo Excel: Thon 1..10)
-    for (let i = 1; i <= 10; i++) {
+    // 1. 10 thon
+    const danhSachThon = [
+      'Phú Hoà', 'Thái Lai', 'Phước Khương', 'Hoà Nhơn', 'Sơn Phước',
+      'Hoà Ninh', 'An Sơn', 'Thạch Nham Đông', 'Thạch Nham Tây', 'Phước Hưng',
+    ]
+    for (let i = 0; i < danhSachThon.length; i++) {
       await query(
         `INSERT INTO thon (ten_thon, ma_thon) VALUES ($1, $2) ON CONFLICT (ma_thon) DO NOTHING`,
-        [`Thon ${i}`, `T${String(i).padStart(2, '0')}`]
+        [danhSachThon[i], `T${String(i + 1).padStart(2, '0')}`]
       )
     }
     const thonRows = (await query(`SELECT * FROM thon ORDER BY id`)).rows

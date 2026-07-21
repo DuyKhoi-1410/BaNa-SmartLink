@@ -1,22 +1,21 @@
-// Pipeline RAG: cau hoi -> embed -> tim chunk gan nhat -> qwen3 tra loi theo tai lieu
-import { embedOne, generate } from './ollama.js'
+// Pipeline RAG: cau hoi -> embed -> tim chunk gan nhat -> stream tra loi
+import { embedOne, generateStream } from './ollama.js'
 import { searchChunks, countChunks } from './vectorStore.js'
 import { TOP_K, MIN_SIMILARITY } from './config.js'
-
-export interface AskResult {
-  answer: string
-  sources: { file: string; section: string; questionId: string; similarity: number }[]
-}
+import type { Response as ExpressRes } from 'express'
 
 const KHONG_TIM_THAY =
   'Xin lỗi, tôi không tìm thấy thông tin liên quan trong tài liệu. Bạn có thể liên hệ cán bộ Thôn hoặc Tổ Công nghệ số cộng đồng để được hỗ trợ trực tiếp.'
 
-function buildPrompt(context: string, question: string): string {
-  return `Bạn là trợ lý AI SmartLink, chuyên hỗ trợ người dân và cán bộ xã/thôn về hệ thống kê khai dữ liệu Văn hóa - Xã hội.
-Hãy trả lời câu hỏi CHỈ dựa trên các đoạn tài liệu được cung cấp bên dưới.
-Nếu tài liệu không chứa thông tin để trả lời, hãy trả lời đúng câu: "${KHONG_TIM_THAY}"
-Trả lời bằng tiếng Việt, rõ ràng, thân thiện và dễ hiểu cho bà con. Không bịa thông tin ngoài tài liệu.
+function buildPrompt(context: string, question: string, lichSu: string): string {
+  return `Bạn là trợ lý AI SmartLink. Nhiệm vụ duy nhất: trích dẫn lại nội dung từ tài liệu để trả lời câu hỏi.
 
+## QUY TẮC BẮT BUỘC — VI PHẠM BẤT KỲ ĐIỀU NÀO LÀ SAI:
+1. CHỈ sử dụng thông tin CÓ TRONG phần "Tài liệu tham khảo" bên dưới. Trích dẫn nguyên văn hoặc tóm tắt sát nghĩa.
+2. TUYỆT ĐỐI KHÔNG thêm bước, thêm thông tin, suy luận, giải thích thêm hay bịa nội dung — kể cả khi bạn biết câu trả lời từ nguồn khác.
+3. Nếu tài liệu KHÔNG chứa câu trả lời hoặc chỉ liên quan mờ nhạt, trả lời CHÍNH XÁC: "${KHONG_TIM_THAY}"
+4. Trả lời bằng tiếng Việt, ngắn gọn, thân thiện.
+${lichSu ? `\n## Lịch sử trò chuyện gần đây:\n${lichSu}\n` : ''}
 ## Tài liệu tham khảo:
 ${context}
 
@@ -26,34 +25,94 @@ ${question}
 ## Trả lời:`
 }
 
-export async function ask(question: string, vaiTro: string): Promise<AskResult> {
+function buildLichSu(lichSu?: { role: string; content: string }[]): string {
+  if (!lichSu || lichSu.length === 0) return ''
+  return lichSu
+    .slice(-6)
+    .map(m => `${m.role === 'user' ? 'Người hỏi' : 'Trợ lý'}: ${m.content}`)
+    .join('\n')
+}
+
+export async function askStream(
+  res: ExpressRes,
+  question: string,
+  vaiTro: string,
+  lichSu?: { role: string; content: string }[]
+): Promise<void> {
+  res.setHeader('Content-Type', 'text/event-stream')
+  res.setHeader('Cache-Control', 'no-cache')
+  res.setHeader('Connection', 'keep-alive')
+  res.flushHeaders()
+
+  const lsChuoi = buildLichSu(lichSu)
+
   const total = await countChunks()
   if (total === 0) {
-    return {
-      answer: 'Hệ thống chưa được nạp tài liệu hướng dẫn. Vui lòng liên hệ cán bộ xã để được hỗ trợ.',
-      sources: [],
-    }
+    res.write(`data: ${JSON.stringify({ token: 'Hệ thống chưa được nạp tài liệu hướng dẫn. Vui lòng liên hệ cán bộ xã để được hỗ trợ.' })}\n\n`)
+    res.write(`data: ${JSON.stringify({ done: true, sources: [] })}\n\n`)
+    res.end()
+    return
   }
 
   const queryEmbedding = await embedOne(question)
   const results = await searchChunks(queryEmbedding, vaiTro, TOP_K)
+  const filtered = results.filter(r => r.similarity >= MIN_SIMILARITY)
+  const coTaiLieu = filtered.length > 0
+  console.log('[RAG pipeline]', { question, vaiTro, totalResults: results.length, filtered: filtered.length, topSimilarity: results[0]?.similarity, coTaiLieu })
 
-  if (results.length === 0 || results[0].similarity < MIN_SIMILARITY) {
-    return { answer: KHONG_TIM_THAY, sources: [] }
+  let sources: any[] = []
+
+  if (!coTaiLieu) {
+    res.write(`data: ${JSON.stringify({ token: KHONG_TIM_THAY })}\n\n`)
+    res.write(`data: ${JSON.stringify({ done: true, sources: [] })}\n\n`)
+    res.end()
+    return
   }
 
-  const context = results
+  const context = filtered
     .map((r, i) => `--- Đoạn ${i + 1} [${r.metadata.section}, ${r.metadata.questionId}] ---\n${r.noiDung}`)
     .join('\n\n')
-
-  const answer = await generate(buildPrompt(context, question))
-
-  const sources = results.map(r => ({
+  const prompt = buildPrompt(context, question, lsChuoi)
+  sources = filtered.map(r => ({
     file: r.metadata.file,
     section: r.metadata.section,
     questionId: r.metadata.questionId,
     similarity: Math.round(r.similarity * 1000) / 1000,
   }))
 
-  return { answer: answer || KHONG_TIM_THAY, sources }
+  const stream = await generateStream(prompt)
+
+  let buffer = ''
+  stream.on('data', (chunk: Buffer) => {
+    buffer += chunk.toString()
+    const lines = buffer.split('\n')
+    buffer = lines.pop() || ''
+    for (const line of lines) {
+      if (!line.trim()) continue
+      try {
+        const json = JSON.parse(line)
+        if (json.response) {
+          res.write(`data: ${JSON.stringify({ token: json.response })}\n\n`)
+        }
+        if (json.done) {
+          res.write(`data: ${JSON.stringify({ done: true, sources })}\n\n`)
+          res.end()
+        }
+      } catch {}
+    }
+  })
+
+  stream.on('end', () => {
+    if (!res.writableEnded) {
+      res.write(`data: ${JSON.stringify({ done: true, sources })}\n\n`)
+      res.end()
+    }
+  })
+
+  stream.on('error', () => {
+    if (!res.writableEnded) {
+      res.write(`data: ${JSON.stringify({ token: KHONG_TIM_THAY, done: true, sources: [] })}\n\n`)
+      res.end()
+    }
+  })
 }

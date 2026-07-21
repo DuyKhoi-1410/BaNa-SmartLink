@@ -1,12 +1,13 @@
-// SQL Agent: cau hoi tieng Viet cua can bo xa -> SQL SELECT -> chay -> qwen3 tom tat
+// SQL Agent: cau hoi tieng Viet cua can bo xa -> SQL SELECT -> chay -> stream tom tat
 import { query } from '../repositories/db.js'
-import { generate } from './ollama.js'
+import { generate, generateStream } from './ollama.js'
+import type { Response as ExpressRes } from 'express'
 
 const DB_SCHEMA = `
 -- Bảng thôn
 CREATE TABLE thon (
   id SERIAL PRIMARY KEY,
-  ten_thon VARCHAR(100),    -- VD: "Thôn 1", "Thôn Phú Túc"
+  ten_thon VARCHAR(100),    -- VD: "Phú Hoà", "Thạch Nham Đông"
   ma_thon VARCHAR(20),
   trang_thai VARCHAR(20)    -- 'hoat_dong' | 'ngung_hoat_dong'
 );
@@ -74,20 +75,14 @@ CREATE TABLE ke_khai_thon (
 );
 `
 
-const SYSTEM_PROMPT = `Bạn là trợ lý SQL cho hệ thống Ba Na SmartLink - hệ thống kê khai dữ liệu Văn hóa - Xã hội cấp xã.
-Nhiệm vụ: Chuyển câu hỏi tiếng Việt của cán bộ xã thành câu truy vấn SQL PostgreSQL.
-
-## Schema cơ sở dữ liệu:
-${DB_SCHEMA}
-
-## Quy tắc QUAN TRỌNG:
+const BASE_RULES = `## Quy tắc QUAN TRỌNG:
 1. CHỈ tạo câu SELECT. KHÔNG BAO GIỜ dùng INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE.
 2. Luôn JOIN đúng quan hệ: ho_dan.thon_id = thon.id, ke_khai_ho.ho_dan_id = ho_dan.id, ke_khai_ho.dot_id = dot_ke_khai.id
 3. Khi hỏi theo thôn, JOIN với bảng thon qua thon_id.
 4. Khi tính tổng/trung bình, dùng SUM/AVG/COUNT với GROUP BY phù hợp.
 5. Chỉ lấy hộ đang cư trú: ho_dan.trang_thai = 'dang_cu_tru'
 6. Chỉ lấy đợt đang mở hoặc đã đóng (không lấy đợt 'huy'): dot_ke_khai.trang_thai != 'huy'
-7. Khi hỏi "đợt mới nhất" hoặc không chỉ định đợt, dùng đợt có id lớn nhất hoặc ORDER BY nam DESC, quy DESC LIMIT 1.
+7. Khi hỏi "đợt mới nhất" hoặc không chỉ định đợt, dùng subquery: dot_id = (SELECT id FROM dot_ke_khai WHERE trang_thai != 'huy' ORDER BY nam DESC, quy DESC LIMIT 1). KHÔNG dùng ORDER BY + LIMIT trên query chính khi có SUM/COUNT.
 8. ct03_ho_ngheo và ct04_ho_can_ngheo là 0 hoặc 1 (boolean), SUM để đếm tổng hộ nghèo/cận nghèo.
 9. KHÔNG lọc theo ke_khai_ho.trang_thai trừ khi câu hỏi nêu rõ. Dữ liệu đã kê khai gồm nhiều trạng thái ('da_ke_khai','da_duyet','giu_nguyen'); nếu tự thêm điều kiện trang_thai='da_ke_khai' sẽ bỏ sót dữ liệu.
 10. Trả về TỐI ĐA 50 dòng (LIMIT 50).
@@ -108,8 +103,41 @@ ${DB_SCHEMA}
 - CT14: Số vụ bạo lực gia đình (do thôn nhập)
 
 ## Format trả về:
-Chỉ trả về câu SQL thuần, không có markdown, không có giải thích. Ví dụ:
-SELECT t.ten_thon, SUM(k.ct02_tong_nhan_khau) AS tong_nhan_khau FROM ke_khai_ho k JOIN ho_dan h ON k.ho_dan_id = h.id JOIN thon t ON h.thon_id = t.id WHERE h.trang_thai = 'dang_cu_tru' GROUP BY t.ten_thon ORDER BY t.ten_thon LIMIT 50`
+Chỉ trả về câu SQL thuần, không có markdown, không có giải thích.`
+
+function buildSystemPrompt(vaiTro: string, thonId?: number, hoDanId?: number): string {
+  const roleLabel: Record<string, string> = { xa: 'cán bộ xã', thon: 'cán bộ thôn', dan: 'người dân' }
+  let prompt = `Bạn là trợ lý SQL cho hệ thống Ba Na SmartLink - hệ thống kê khai dữ liệu Văn hóa - Xã hội cấp xã.
+Nhiệm vụ: Chuyển câu hỏi tiếng Việt của ${roleLabel[vaiTro] || 'người dùng'} thành câu truy vấn SQL PostgreSQL.
+
+## Schema cơ sở dữ liệu:
+${DB_SCHEMA}
+
+${BASE_RULES}`
+
+  if (vaiTro === 'thon' && thonId != null) {
+    prompt += `
+
+## PHÂN QUYỀN - CÁN BỘ THÔN (BẮT BUỘC):
+Người hỏi là cán bộ thôn có thon_id = ${thonId}. BẮT BUỘC mọi câu SQL phải có điều kiện lọc theo thôn này.
+- Nếu query bảng ho_dan: PHẢI có WHERE ho_dan.thon_id = ${thonId}
+- Nếu query bảng ke_khai_ho qua ho_dan: PHẢI có WHERE h.thon_id = ${thonId} (với h là alias của ho_dan)
+- Nếu query bảng ke_khai_thon: PHẢI có WHERE ke_khai_thon.thon_id = ${thonId}
+- KHÔNG BAO GIỜ trả dữ liệu của thôn khác.`
+  }
+
+  if (vaiTro === 'dan' && hoDanId != null) {
+    prompt += `
+
+## PHÂN QUYỀN - NGƯỜI DÂN (BẮT BUỘC):
+Người hỏi là người dân, hộ dân có ho_dan.id = ${hoDanId}. BẮT BUỘC mọi câu SQL phải lọc chỉ dữ liệu hộ này.
+- Nếu query bảng ke_khai_ho: PHẢI có WHERE ke_khai_ho.ho_dan_id = ${hoDanId}
+- Nếu query bảng ho_dan: PHẢI có WHERE ho_dan.id = ${hoDanId}
+- KHÔNG BAO GIỜ trả dữ liệu của hộ dân khác.`
+  }
+
+  return prompt
+}
 
 function isSafeSQL(sql: string): boolean {
   const upper = sql.toUpperCase().replace(/\s+/g, ' ')
@@ -136,14 +164,92 @@ export interface AskDataResult {
   data?: any[]
 }
 
-export async function askData(question: string): Promise<AskDataResult> {
-  const rawSql = await generate(`${SYSTEM_PROMPT}\n\n## Câu hỏi của cán bộ xã:\n${question}`)
+function buildSummarizePrompt(question: string, rows: any[], lichSu: string, vaiTro: string): string {
+  const roleLabel: Record<string, string> = { xa: 'cán bộ xã', thon: 'cán bộ thôn', dan: 'người dân' }
+  return `Bạn là trợ lý AI SmartLink cho ${roleLabel[vaiTro] || 'người dùng'}.
+
+## QUY TẮC BẮT BUỘC:
+1. CHỈ sử dụng dữ liệu trong phần "Kết quả dữ liệu" bên dưới. Được phép tính toán, so sánh, phân tích DỰA TRÊN dữ liệu này.
+2. TUYỆT ĐỐI KHÔNG bịa thêm số liệu, thông tin hay dữ liệu KHÔNG CÓ trong kết quả.
+3. Nếu có nhiều dòng, trình bày dạng danh sách. Ghi rõ đơn vị (hộ, người, vụ...).
+4. Không nói về SQL hay kỹ thuật. Ngắn gọn, đúng trọng tâm.
+${lichSu ? `\n## Lịch sử trò chuyện gần đây:\n${lichSu}\n` : ''}
+## Câu hỏi ban đầu:
+${question}
+
+## Kết quả dữ liệu:
+${JSON.stringify(rows, null, 2)}
+
+## Trả lời:`
+}
+
+function hasRequiredFilter(sql: string, vaiTro: string, thonId?: number, hoDanId?: number): boolean {
+  if (vaiTro === 'xa') return true
+  const upper = sql.toUpperCase().replace(/\s+/g, ' ')
+  if (vaiTro === 'thon' && thonId != null) {
+    return upper.includes(`THON_ID = ${thonId}`)
+  }
+  if (vaiTro === 'dan' && hoDanId != null) {
+    return upper.includes(`HO_DAN_ID = ${hoDanId}`) || upper.includes(`HO_DAN.ID = ${hoDanId}`)
+  }
+  return false
+}
+
+function buildLichSu(lichSu?: { role: string; content: string }[]): string {
+  if (!lichSu || lichSu.length === 0) return ''
+  return lichSu
+    .slice(-6)
+    .map(m => `${m.role === 'user' ? 'Người hỏi' : 'Trợ lý'}: ${m.content}`)
+    .join('\n')
+}
+
+export async function askDataStream(
+  res: ExpressRes,
+  question: string,
+  vaiTro: string,
+  userId?: number,
+  thonId?: number,
+  lichSu?: { role: string; content: string }[]
+): Promise<void> {
+  res.setHeader('Content-Type', 'text/event-stream')
+  res.setHeader('Cache-Control', 'no-cache')
+  res.setHeader('Connection', 'keep-alive')
+  res.flushHeaders()
+
+  const lsChuoi = buildLichSu(lichSu)
+
+  let hoDanId: number | undefined
+  if (vaiTro === 'dan' && userId) {
+    const result = await query('SELECT id FROM ho_dan WHERE chu_ho_id = $1 LIMIT 1', [userId])
+    hoDanId = result.rows[0]?.id
+    if (!hoDanId) {
+      res.write(`data: ${JSON.stringify({ token: 'Không tìm thấy thông tin hộ dân của bạn trong hệ thống.' })}\n\n`)
+      res.write(`data: ${JSON.stringify({ done: true })}\n\n`)
+      res.end()
+      return
+    }
+  }
+
+  const roleLabel: Record<string, string> = { xa: 'cán bộ xã', thon: 'cán bộ thôn', dan: 'người dân' }
+  console.log('[SQL Agent]', { question, vaiTro, userId, thonId, hoDanId })
+  const systemPrompt = buildSystemPrompt(vaiTro, thonId, hoDanId)
+  const rawSql = await generate(`${systemPrompt}\n\n## Câu hỏi của ${roleLabel[vaiTro] || 'người dùng'}:\n${question}`)
+  console.log('[SQL Agent] generated SQL:', rawSql.slice(0, 200))
   const sql = cleanSQL(rawSql)
 
   if (!sql || !isSafeSQL(sql)) {
-    return {
-      answer: 'Xin lỗi, tôi không thể tạo truy vấn phù hợp cho câu hỏi này. Bạn có thể diễn đạt lại không?',
-    }
+    res.write(`data: ${JSON.stringify({ token: 'Xin lỗi, tôi không thể tạo truy vấn phù hợp cho câu hỏi này. Bạn có thể diễn đạt lại không?' })}\n\n`)
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`)
+    res.end()
+    return
+  }
+
+  if (!hasRequiredFilter(sql, vaiTro, thonId, hoDanId)) {
+    console.warn('SQL missing required filter:', { vaiTro, thonId, hoDanId, sql })
+    res.write(`data: ${JSON.stringify({ token: 'Xin lỗi, tôi không thể truy vấn dữ liệu ngoài phạm vi quyền hạn của bạn.' })}\n\n`)
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`)
+    res.end()
+    return
   }
 
   let rows: any[]
@@ -152,32 +258,53 @@ export async function askData(question: string): Promise<AskDataResult> {
     rows = result.rows
   } catch (err: any) {
     console.error('SQL execution error:', err.message, '\nSQL:', sql)
-    return {
-      answer: 'Xin lỗi, truy vấn dữ liệu gặp lỗi. Bạn có thể diễn đạt câu hỏi khác được không?',
-      sql,
-    }
+    res.write(`data: ${JSON.stringify({ token: 'Xin lỗi, truy vấn dữ liệu gặp lỗi. Bạn có thể diễn đạt câu hỏi khác được không?' })}\n\n`)
+    res.write(`data: ${JSON.stringify({ done: true, sql })}\n\n`)
+    res.end()
+    return
   }
 
   if (rows.length === 0) {
-    return {
-      answer: 'Không tìm thấy dữ liệu phù hợp với câu hỏi của bạn. Có thể chưa có dữ liệu kê khai cho tiêu chí này.',
-      sql,
-      data: [],
-    }
+    res.write(`data: ${JSON.stringify({ token: 'Không tìm thấy dữ liệu phù hợp với câu hỏi của bạn. Có thể chưa có dữ liệu kê khai cho tiêu chí này.' })}\n\n`)
+    res.write(`data: ${JSON.stringify({ done: true, sql, data: [] })}\n\n`)
+    res.end()
+    return
   }
 
-  const summarizePrompt = `Bạn là trợ lý AI SmartLink cho cán bộ xã. Hãy tóm tắt kết quả truy vấn dữ liệu sau thành câu trả lời tiếng Việt dễ hiểu, rõ ràng.
-Nếu có nhiều dòng, hãy trình bày dạng danh sách. Nếu có số liệu, hãy ghi rõ đơn vị (hộ, người, vụ...).
-Không nói về SQL hay kỹ thuật. Chỉ trả lời như đang báo cáo số liệu cho cán bộ xã.
+  const prompt = buildSummarizePrompt(question, rows, lsChuoi, vaiTro)
+  const stream = await generateStream(prompt)
 
-## Câu hỏi ban đầu:
-${question}
+  let buffer = ''
+  stream.on('data', (chunk: Buffer) => {
+    buffer += chunk.toString()
+    const lines = buffer.split('\n')
+    buffer = lines.pop() || ''
+    for (const line of lines) {
+      if (!line.trim()) continue
+      try {
+        const json = JSON.parse(line)
+        if (json.response) {
+          res.write(`data: ${JSON.stringify({ token: json.response })}\n\n`)
+        }
+        if (json.done) {
+          res.write(`data: ${JSON.stringify({ done: true, sql, data: rows })}\n\n`)
+          res.end()
+        }
+      } catch {}
+    }
+  })
 
-## Kết quả dữ liệu:
-${JSON.stringify(rows, null, 2)}
+  stream.on('end', () => {
+    if (!res.writableEnded) {
+      res.write(`data: ${JSON.stringify({ done: true, sql, data: rows })}\n\n`)
+      res.end()
+    }
+  })
 
-## Trả lời:`
-
-  const answer = await generate(summarizePrompt) || 'Không thể tóm tắt kết quả.'
-  return { answer, sql, data: rows }
+  stream.on('error', () => {
+    if (!res.writableEnded) {
+      res.write(`data: ${JSON.stringify({ token: 'Không thể tóm tắt kết quả.', done: true, sql })}\n\n`)
+      res.end()
+    }
+  })
 }

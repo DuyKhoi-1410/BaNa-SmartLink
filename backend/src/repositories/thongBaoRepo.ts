@@ -29,6 +29,22 @@ export async function danhDauDaDoc(id) {
   return result.rows[0]
 }
 
+export async function danhDauTatCaDaDoc(nguoiNhanId) {
+  const result = await query(
+    `UPDATE thong_bao SET da_doc = TRUE WHERE nguoi_nhan_id = $1 AND da_doc = FALSE`,
+    [nguoiNhanId]
+  )
+  return result.rowCount
+}
+
+export async function danhDauTatCaDaDocTheoThon(thonId) {
+  const result = await query(
+    `UPDATE thong_bao SET da_doc = TRUE WHERE thon_id = $1 AND da_doc = FALSE`,
+    [thonId]
+  )
+  return result.rowCount
+}
+
 export async function demChuaDoc(nguoiNhanId) {
   const result = await query(
     `SELECT COUNT(*) AS so_chua_doc FROM thong_bao WHERE nguoi_nhan_id = $1 AND da_doc = FALSE`,

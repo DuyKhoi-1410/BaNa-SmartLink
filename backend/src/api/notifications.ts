@@ -35,6 +35,17 @@ router.post('/', authMiddleware, asyncHandler(async (req, res) => {
   ok(res, tb, 201)
 }))
 
+router.patch('/doc-tat-ca', authMiddleware, asyncHandler(async (req, res) => {
+  const { thon_id } = req.query
+  let count
+  if (thon_id) {
+    count = await thongBaoRepo.danhDauTatCaDaDocTheoThon(parseInt(thon_id as string))
+  } else {
+    count = await thongBaoRepo.danhDauTatCaDaDoc(req.user.id)
+  }
+  ok(res, { da_cap_nhat: count })
+}))
+
 router.patch('/:id/doc', authMiddleware, asyncHandler(async (req, res) => {
   const tb = await thongBaoRepo.danhDauDaDoc(parseInt(req.params.id))
   if (!tb) throw loi.khongThay('Khong tim thay thong bao')

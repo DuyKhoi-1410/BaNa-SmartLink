@@ -1,31 +1,38 @@
-// Route RAG. Base: /api/v1/rag. Validate input + goi ragService + tra envelope {success,data}
+// Route RAG. Base: /api/v1/rag
 import { Router } from 'express'
-import type { Request } from 'express'
-import { authMiddleware, requireRole } from '../middleware/auth.js'
+import { authMiddleware } from '../middleware/auth.js'
 import { asyncHandler, ok, loi } from '../utils/response.js'
 import * as ragService from '../services/ragService.js'
 
 const router = Router()
 
-function layCauHoi(req: Request): string {
-  const { cauHoi } = req.body ?? {}
-  if (!cauHoi || typeof cauHoi !== 'string' || cauHoi.trim().length < 2) {
-    throw loi.xau('Vui lòng nhập câu hỏi')
+// Endpoint thong nhat: tu phan loai + stream response
+router.post('/ask', authMiddleware, async (req, res) => {
+  try {
+    const fs = await import('fs')
+    fs.appendFileSync('rag_debug.log', `[${new Date().toISOString()}] /ask hit, user: ${JSON.stringify(req.user?.vai_tro)}, body: ${JSON.stringify(req.body?.cauHoi?.slice(0, 50))}\n`)
+    const { cauHoi, lichSu } = req.body ?? {}
+    if (!cauHoi || typeof cauHoi !== 'string' || cauHoi.trim().length < 2) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_INPUT', message: 'Vui lòng nhập câu hỏi' },
+      })
+    }
+
+    const vaiTro = req.user?.vai_tro || 'dan'
+    const userId = req.user?.id as number | undefined
+    const thonId = req.user?.thon_id as number | undefined
+    await ragService.askSmart(res, cauHoi.trim(), vaiTro, userId, thonId, lichSu)
+  } catch (err: any) {
+    console.error('RAG ask error:', err.message)
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        error: { code: 'INTERNAL_ERROR', message: err.message },
+      })
+    }
   }
-  return cauHoi.trim()
-}
-
-// Hoi tai lieu huong dan (RAG) - moi vai tro
-router.post('/ask', authMiddleware, asyncHandler(async (req, res) => {
-  const data = await ragService.ask(layCauHoi(req), req.user?.vai_tro || 'dan')
-  ok(res, data)
-}))
-
-// Hoi so lieu (SQL agent) - chi can bo xa
-router.post('/ask-data', authMiddleware, requireRole('xa'), asyncHandler(async (req, res) => {
-  const data = await ragService.askData(layCauHoi(req))
-  ok(res, data)
-}))
+})
 
 // Trang thai kho tri thuc
 router.get('/status', authMiddleware, asyncHandler(async (_req, res) => {

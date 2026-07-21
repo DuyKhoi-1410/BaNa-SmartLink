@@ -87,7 +87,7 @@ export default function ThongBaoXa() {
     const taiDuLieu = async () => {
       try {
         const data = await api.get('/notifications')
-        setDanhSach(data.map(tb => ({
+        const mapped = data.map(tb => ({
           id: tb.id,
           loai: mapLoai(tb.loai),
           baoCaoId: tb.dot_id,
@@ -95,7 +95,13 @@ export default function ThongBaoXa() {
           noiDung: tb.noi_dung,
           thoiGian: formatThoiGian(tb.created_at),
           daDoc: tb.da_doc || false,
-        })))
+        }))
+        setDanhSach(mapped)
+        if (mapped.some(tb => !tb.daDoc)) {
+          api.patch('/notifications/doc-tat-ca').then(() => {
+            setDanhSach(prev => prev.map(tb => ({ ...tb, daDoc: true })))
+          }).catch(() => {})
+        }
       } catch (err) {
         console.error('Loi tai thong bao xa:', err)
       } finally {
@@ -123,6 +129,7 @@ export default function ThongBaoXa() {
 
   const danhDauTatCaDaDoc = () => {
     setDanhSach(prev => prev.map(tb => ({ ...tb, daDoc: true })))
+    api.patch('/notifications/doc-tat-ca').catch(() => {})
   }
 
   if (dangTai) {

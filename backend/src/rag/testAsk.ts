@@ -1,26 +1,25 @@
-// Test nhanh pipeline RAG + SQL agent (khong can chay server)
+// Test nhanh Ollama connection + classify (khong can chay server)
 import 'dotenv/config'
-import { ask, askData } from '../services/ragService.js'
+import { generate, classify, embedOne } from './ollama.js'
+import { searchChunks, countChunks } from './vectorStore.js'
 import pool from '../repositories/db.js'
 
 async function main() {
-  console.log('===== TEST RAG (hoi tai lieu, vai tro dan) =====\n')
-  for (const q of ['Làm sao để kê khai?', 'Tôi quên mật khẩu thì làm thế nào?']) {
-    console.log('HOI:', q)
-    const r = await ask(q, 'dan')
-    console.log('DAP:', r.answer)
-    console.log('Nguon:', r.sources.map(s => `${s.section}/${s.questionId}(${s.similarity})`).join(', '))
-    console.log('---')
+  console.log('===== TEST OLLAMA CONNECTION =====\n')
+  const total = await countChunks()
+  console.log('Total chunks:', total)
+
+  console.log('\n===== TEST CLASSIFY =====\n')
+  for (const q of ['Tổng hộ nghèo?', 'Làm sao kê khai?', 'Số nhân khẩu thôn 3?', 'Quên mật khẩu?']) {
+    const loai = await classify(q)
+    console.log(`"${q}" -> ${loai}`)
   }
 
-  console.log('\n===== TEST SQL AGENT (hoi so lieu, vai tro xa) =====\n')
-  for (const q of ['Tổng số hộ nghèo toàn xã là bao nhiêu?', 'Số nhân khẩu theo từng thôn?']) {
-    console.log('HOI:', q)
-    const r = await askData(q)
-    console.log('DAP:', r.answer)
-    if (r.sql) console.log('SQL:', r.sql)
-    console.log('---')
-  }
+  console.log('\n===== TEST EMBED + SEARCH =====\n')
+  const vec = await embedOne('Làm sao kê khai?')
+  console.log('Vector dim:', vec.length)
+  const results = await searchChunks(vec, 'dan', 3)
+  console.log('Top 3:', results.map(r => `${r.metadata.questionId}(${r.similarity.toFixed(3)})`).join(', '))
 
   await pool.end()
 }

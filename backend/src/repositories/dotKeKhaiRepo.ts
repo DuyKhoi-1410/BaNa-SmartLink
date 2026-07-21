@@ -1,5 +1,12 @@
 import { query } from './db.js'
 
+const CT_DAN = ['CT02','CT03','CT04','CT05','CT06','CT07','CT08','CT10','CT11']
+
+export function dotCoCTDan(chiTieu: string[] | null): boolean {
+  if (!chiTieu) return true
+  return chiTieu.some(ct => CT_DAN.includes(ct))
+}
+
 export async function layTatCa() {
   const result = await query(`SELECT * FROM dot_ke_khai ORDER BY created_at DESC`)
   return result.rows
@@ -27,8 +34,9 @@ export async function layDangMoChoDan(nguoiDungCreatedAt: string) {
   const result = await query(
     `SELECT * FROM dot_ke_khai WHERE trang_thai = 'dang_mo'
        AND (created_at >= $1 OR ngay_ket_thuc >= CURRENT_DATE)
+       AND (chi_tieu IS NULL OR chi_tieu ?| $2)
      ORDER BY ngay_ket_thuc ASC`,
-    [nguoiDungCreatedAt]
+    [nguoiDungCreatedAt, CT_DAN]
   )
   return result.rows
 }

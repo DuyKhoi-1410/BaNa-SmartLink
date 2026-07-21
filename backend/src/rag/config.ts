@@ -11,6 +11,6 @@ export const RAG_CONFIG = {
 }
 
 // Tham so pipeline
-export const TOP_K = 8
-export const MIN_SIMILARITY = 0.3
+export const TOP_K = 4
+export const MIN_SIMILARITY = 0.35
 export const GENERATION_TEMPERATURE = 0

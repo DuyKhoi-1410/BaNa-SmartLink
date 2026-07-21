@@ -3,6 +3,7 @@ import * as nguoiDungRepo from '../repositories/nguoiDungRepo.js'
 import * as hoDanRepo from '../repositories/hoDanRepo.js'
 import * as thonRepo from '../repositories/thonRepo.js'
 import * as dotKeKhaiRepo from '../repositories/dotKeKhaiRepo.js'
+import { dotCoCTDan } from '../repositories/dotKeKhaiRepo.js'
 import * as keKhaiHoRepo from '../repositories/keKhaiHoRepo.js'
 import * as keKhaiThonRepo from '../repositories/keKhaiThonRepo.js'
 
@@ -25,17 +26,19 @@ export async function thongBaoTaoDot(dot, nguoiTaoId) {
     })
   }
 
-  // Gửi cho từng chủ hộ (vai_tro = 'dan')
-  const danhSachDan = await nguoiDungRepo.layDanhSach('dan', null, null)
-  for (const dan of danhSachDan) {
-    danhSachTB.push({
-      tieu_de: `Có đợt kê khai mới`,
-      noi_dung: `Đợt "${dot.ten_dot}" đã mở. Hạn nộp: ${formatNgay(dot.ngay_ket_thuc)}. Vui lòng vào hệ thống để kê khai.`,
-      loai: 'bao_cao_moi',
-      nguoi_gui_id: nguoiTaoId,
-      nguoi_nhan_id: dan.id,
-      dot_id: dot.id,
-    })
+  // Gửi cho từng chủ hộ (vai_tro = 'dan') — chỉ khi đợt có CT dân cần kê
+  if (dotCoCTDan(dot.chi_tieu)) {
+    const danhSachDan = await nguoiDungRepo.layDanhSach('dan', null, null)
+    for (const dan of danhSachDan) {
+      danhSachTB.push({
+        tieu_de: `Có đợt kê khai mới`,
+        noi_dung: `Đợt "${dot.ten_dot}" đã mở. Hạn nộp: ${formatNgay(dot.ngay_ket_thuc)}. Vui lòng vào hệ thống để kê khai.`,
+        loai: 'bao_cao_moi',
+        nguoi_gui_id: nguoiTaoId,
+        nguoi_nhan_id: dan.id,
+        dot_id: dot.id,
+      })
+    }
   }
 
   if (danhSachTB.length > 0) {
@@ -138,24 +141,27 @@ export async function nhacHanNop() {
     const loai = soNgayCon === 1 ? 'nhac_1_ngay' : 'nhac_2_ngay'
     const chuSoNgay = soNgayCon === 1 ? '1 ngày' : '2 ngày'
 
-    // Nhắc dân chưa kê khai
+    // Nhắc dân chưa kê khai — chỉ khi đợt có CT dân
     const thons = await thonRepo.layTatCa()
+    const canNhacDan = dotCoCTDan(dot.chi_tieu)
     for (const thon of thons) {
-      const danhSachHo = await hoDanRepo.layTheoThon(thon.id, 'dang_cu_tru')
-      for (const ho of danhSachHo) {
-        const daGui = await thongBaoRepo.daGuiThongBao(dot.id, loai, ho.chu_ho_id, null)
-        if (daGui) continue
+      if (canNhacDan) {
+        const danhSachHo = await hoDanRepo.layTheoThon(thon.id, 'dang_cu_tru')
+        for (const ho of danhSachHo) {
+          const daGui = await thongBaoRepo.daGuiThongBao(dot.id, loai, ho.chu_ho_id, null)
+          if (daGui) continue
 
-        const keKhai = await keKhaiHoRepo.timTheoHoDanVaDot(ho.id, dot.id)
-        if (keKhai && keKhai.trang_thai !== 'chua_ke_khai' && keKhai.trang_thai !== 'tra_lai') continue
+          const keKhai = await keKhaiHoRepo.timTheoHoDanVaDot(ho.id, dot.id)
+          if (keKhai && keKhai.trang_thai !== 'chua_ke_khai' && keKhai.trang_thai !== 'tra_lai') continue
 
-        await thongBaoRepo.taoMoi({
-          tieu_de: `Còn ${chuSoNgay} để kê khai`,
-          noi_dung: `Đợt "${dot.ten_dot}" sẽ hết hạn sau ${chuSoNgay}. Vui lòng hoàn thành kê khai trước hạn.`,
-          loai,
-          nguoi_nhan_id: ho.chu_ho_id,
-          dot_id: dot.id,
-        })
+          await thongBaoRepo.taoMoi({
+            tieu_de: `Còn ${chuSoNgay} để kê khai`,
+            noi_dung: `Đợt "${dot.ten_dot}" sẽ hết hạn sau ${chuSoNgay}. Vui lòng hoàn thành kê khai trước hạn.`,
+            loai,
+            nguoi_nhan_id: ho.chu_ho_id,
+            dot_id: dot.id,
+          })
+        }
       }
 
       // Nhắc cán bộ thôn chưa nộp xã

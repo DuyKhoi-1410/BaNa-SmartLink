@@ -59,3 +59,67 @@ export async function generate(prompt: string): Promise<string> {
   }, 120_000)
   return (data.response ?? '').trim()
 }
+
+// Stream sinh cau tra loi, tra ve NodeJS.ReadableStream tu Ollama
+export async function generateStream(prompt: string): Promise<NodeJS.ReadableStream> {
+  const http = await import('http')
+  const https = await import('https')
+  const url = new URL(`${RAG_CONFIG.baseUrl}/api/generate`)
+  const isHttps = url.protocol === 'https:'
+  const reqModule = isHttps ? https : http
+
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify({
+      model: RAG_CONFIG.chatModel,
+      prompt,
+      stream: true,
+      think: false,
+      options: { temperature: GENERATION_TEMPERATURE },
+    })
+
+    const hdrs: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(body).toString(),
+    }
+    const cfHeaders = headers()
+    if (cfHeaders['CF-Access-Client-Id']) {
+      hdrs['CF-Access-Client-Id'] = cfHeaders['CF-Access-Client-Id']
+      hdrs['CF-Access-Client-Secret'] = cfHeaders['CF-Access-Client-Secret']
+    }
+
+    const req = reqModule.request({
+      hostname: url.hostname,
+      port: url.port || (isHttps ? 443 : 80),
+      path: url.pathname,
+      method: 'POST',
+      headers: hdrs,
+    }, (res) => {
+      if (res.statusCode !== 200) {
+        let errBody = ''
+        res.on('data', c => errBody += c)
+        res.on('end', () => reject(new Error(`Ollama stream HTTP ${res.statusCode}: ${errBody.slice(0, 200)}`)))
+        return
+      }
+      resolve(res)
+    })
+
+    req.setTimeout(120_000, () => { req.destroy(); reject(new Error('Ollama stream timeout')) })
+    req.on('error', reject)
+    req.write(body)
+    req.end()
+  })
+}
+
+// Phan loai nhanh: cau hoi la "so_lieu" (query DB) hay "huong_dan" (tim tai lieu)
+export async function classify(question: string): Promise<'so_lieu' | 'huong_dan'> {
+  const prompt = `Phân loại câu hỏi sau thuộc loại nào. Chỉ trả lời đúng 1 từ: "so_lieu" hoặc "huong_dan".
+
+- "so_lieu": câu hỏi về số liệu, thống kê, đếm, tổng, trung bình, so sánh dữ liệu (ví dụ: "tổng hộ nghèo?", "bao nhiêu nhân khẩu thôn 3?", "thôn nào nhiều trẻ nhất?")
+- "huong_dan": câu hỏi về cách sử dụng, thao tác, hướng dẫn, quy trình (ví dụ: "làm sao kê khai?", "cách đăng nhập?", "quên mật khẩu?")
+
+Câu hỏi: "${question}"
+Trả lời:`
+
+  const answer = await generate(prompt)
+  return answer.toLowerCase().includes('so_lieu') ? 'so_lieu' : 'huong_dan'
+}

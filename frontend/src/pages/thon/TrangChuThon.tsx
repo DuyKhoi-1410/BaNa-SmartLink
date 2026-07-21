@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { CalendarDays, Home, Users, Clock, FileText, ChevronDown, Loader2 } from 'lucide-react'
+import { CalendarDays, Home, Users, Clock, FileText, ChevronDown, Loader2, CheckCircle2 } from 'lucide-react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { tinhTrangThai } from './nhiem-vu/utils'
 import { api } from '../../lib/api'
@@ -63,6 +63,12 @@ export default function TrangChuThon() {
   const [danhSachNhiemVu, setDanhSachNhiemVu] = useState([])
   const [duLieuThon, setDuLieuThon] = useState<any>({})
   const [tienDoNhiemVu, setTienDoNhiemVu] = useState([])
+  const [ctTop5Ho, setCtTop5Ho] = useState('CT02')
+  const [moDropdownTop5Ho, setMoDropdownTop5Ho] = useState(false)
+  const [dsKeKhaiHo, setDsKeKhaiHo] = useState([])
+  const [topHoNopNhanh, setTopHoNopNhanh] = useState([])
+  const [sortHoNhanhNhat, setSortHoNhanhNhat] = useState(true)
+  const [moDropdownSortHo, setMoDropdownSortHo] = useState(false)
 
   const thonId = nguoiDung?.thon_id
   const tenThon = nguoiDung?.ten_thon || 'Thôn'
@@ -104,6 +110,7 @@ export default function TrangChuThon() {
             id: dot.id, ten: dot.ten_dot, ngayHetHan: dot.ngay_ket_thuc,
             trangThai: tinhTrangThai(dot.ngay_ket_thuc),
             tongHo, daDuyet, choDuyet, chuaNop,
+            danKhongCanKe: !!tienDo.dan_khong_can_ke,
           })
         })
 
@@ -133,6 +140,64 @@ export default function TrangChuThon() {
     }
     taiDuLieu()
   }, [thonId])
+
+  useEffect(() => {
+    if (!thonId || danhSachNhiemVu.length === 0) return
+    const dotMoiNhat = danhSachNhiemVu[0]
+    if (!dotMoiNhat) return
+    api.get(`/reports/ke-khai-ho/${dotMoiNhat.id}?thon_id=${thonId}`)
+      .then(rows => { if (rows?.length) setDsKeKhaiHo(rows) })
+      .catch(() => {})
+  }, [thonId, danhSachNhiemVu])
+
+  useEffect(() => {
+    if (!thonId || danhSachNhiemVu.length === 0) return
+    api.get('/periods').then(async periods => {
+      if (!periods?.length) return
+      const tichLuy: Record<string, { tong: number; soDot: number; ten: string }> = {}
+      await Promise.all(periods.map(async dot => {
+        const rows = await api.get(`/reports/ke-khai-ho/${dot.id}?thon_id=${thonId}`).catch(() => [])
+        if (!rows?.length) return
+        const ngayBD = new Date(dot.ngay_bat_dau).getTime()
+        const ngayKT = new Date(dot.ngay_ket_thuc).getTime()
+        rows.forEach(kk => {
+          const key = String(kk.ho_dan_id)
+          if (!tichLuy[key]) tichLuy[key] = { tong: 0, soDot: 0, ten: kk.ho_ten_chu_ho }
+          const daNop = kk.trang_thai && kk.trang_thai !== 'chua_ke_khai'
+          const thoiGianNop = daNop && kk.ngay_ke_khai
+            ? new Date(kk.ngay_ke_khai).getTime()
+            : ngayKT
+          tichLuy[key].tong += Math.max(0, thoiGianNop - ngayBD)
+          tichLuy[key].soDot += 1
+        })
+      }))
+      const ranking = Object.entries(tichLuy)
+        .map(([_, d]) => ({ tenHo: d.ten, tbGio: d.tong / d.soDot / (1000 * 60 * 60) }))
+        .sort((a, b) => a.tbGio - b.tbGio)
+      setTopHoNopNhanh(ranking)
+    }).catch(() => {})
+  }, [thonId, danhSachNhiemVu])
+
+  const fieldMapHo = {
+    CT02: 'ct02_tong_nhan_khau', CT03: 'ct03_ho_ngheo', CT04: 'ct04_ho_can_ngheo',
+    CT05: 'ct05_nguoi_co_cong', CT06: 'ct06_bao_tro_xh', CT07: 'ct07_tre_duoi_16',
+    CT08: 'ct08_tre_hoan_canh', CT10: 'ct10_tuoi_lao_dong', CT11: 'ct11_tham_gia_bhyt',
+  }
+
+  const danhSachCTHo = danhSachCT.filter(ct => fieldMapHo[ct.ma])
+
+  const top5Ho = useMemo(() => {
+    return dsKeKhaiHo
+      .map(kk => ({ ten: kk.ho_ten_chu_ho, giaTri: parseInt(kk[fieldMapHo[ctTop5Ho]]) || 0 }))
+      .filter(h => h.giaTri > 0)
+      .sort((a, b) => b.giaTri - a.giaTri)
+      .slice(0, 5)
+  }, [ctTop5Ho, dsKeKhaiHo])
+
+  const topHoSorted = useMemo(() => {
+    const arr = [...topHoNopNhanh]
+    return sortHoNhanhNhat ? arr.sort((a, b) => a.tbGio - b.tbGio) : arr.sort((a, b) => b.tbGio - a.tbGio)
+  }, [topHoNopNhanh, sortHoNhanhNhat])
 
   const homNay = new Date().toISOString().slice(0, 10)
   const soNhiemVuHoatDong = danhSachNhiemVu.filter(nv => nv.ngayHetHan >= homNay).length
@@ -441,8 +506,54 @@ export default function TrangChuThon() {
 
       {/* ── Hàng cuối — 3 khung nhỏ ── */}
       <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 md:mt-5 md:gap-5">
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-4 min-h-[220px] flex flex-col transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-md">
-          <p className="text-sm font-bold text-slate-700 mb-3">Tình Hình Thôn</p>
+        {/* Trái: Top 5 Hộ Dân Chỉ Tiêu Cao Nhất */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3 flex flex-col transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-md">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-bold text-slate-700">Top 5 Hộ Dân Chỉ Tiêu Cao Nhất</p>
+            <div className="relative">
+              <button
+                onClick={() => setMoDropdownTop5Ho(!moDropdownTop5Ho)}
+                className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-[11px] text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <span>{danhSachCTHo.find(ct => ct.ma === ctTop5Ho)?.ma} — {(danhSachCTHo.find(ct => ct.ma === ctTop5Ho)?.ten.length ?? 0) > 12 ? danhSachCTHo.find(ct => ct.ma === ctTop5Ho)?.ten.slice(0, 11) + '…' : danhSachCTHo.find(ct => ct.ma === ctTop5Ho)?.ten}</span>
+                <ChevronDown size={12} className={`transition-transform duration-200 ${moDropdownTop5Ho ? 'rotate-180' : ''}`} />
+              </button>
+              {moDropdownTop5Ho && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setMoDropdownTop5Ho(false)} />
+                  <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-60 overflow-y-auto">
+                    {danhSachCTHo.map(ct => (
+                      <button
+                        key={ct.ma}
+                        onClick={() => { setCtTop5Ho(ct.ma); setMoDropdownTop5Ho(false) }}
+                        className={`w-full text-left px-3 py-2 text-xs transition-colors ${ct.ma === ctTop5Ho ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-600 hover:bg-slate-50'}`}
+                      >
+                        {ct.ma} — {ct.ten}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+          <div className="flex-1 flex flex-col justify-between gap-1.5">
+            {top5Ho.length > 0 ? top5Ho.map((ho) => (
+              <div key={ho.ten} className="group flex items-center gap-2 cursor-default transition-all duration-300 ease-out">
+                <span className="text-xs text-slate-500 group-hover:text-blue-600 w-24 truncate flex-shrink-0 transition-colors duration-100" title={ho.ten}>{ho.ten}</span>
+                <div className="flex-1 relative h-5 bg-slate-100 rounded overflow-hidden">
+                  <div
+                    className="absolute inset-y-0 left-0 rounded transition-all duration-500 ease-out group-hover:!bg-[#1c5cab] group-hover:!opacity-100"
+                    style={{ width: `${(ho.giaTri / (top5Ho[0]?.giaTri || 1)) * 100}%`, backgroundColor: MAU_THANH, opacity: 0.85 }}
+                  />
+                </div>
+                <span className="text-xs font-bold text-slate-700 group-hover:text-blue-600 w-12 text-right flex-shrink-0 transition-colors duration-100">{dinhDangSo(ho.giaTri)}</span>
+              </div>
+            )) : (
+              <div className="flex-1 flex items-center justify-center">
+                <p className="text-xs text-slate-400">Chưa có dữ liệu</p>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3 flex flex-col items-center transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-md">
@@ -477,7 +588,13 @@ export default function TrangChuThon() {
             )}
           </div>
 
-          {donutData && (
+          {donutData && donutData.danKhongCanKe ? (
+            <div className="flex flex-col items-center justify-center py-6">
+              <CheckCircle2 size={24} className="text-slate-300 mb-2" />
+              <p className="text-xs text-slate-500 font-semibold text-center">Đợt này chỉ thôn kê khai</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Dân không cần kê</p>
+            </div>
+          ) : donutData && (
             <>
               <div className="relative">
                 <ResponsiveContainer width={150} height={150}>
@@ -537,8 +654,55 @@ export default function TrangChuThon() {
           )}
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3 min-h-[220px] flex flex-col transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-md">
-          <p className="text-sm font-bold text-slate-700 mb-3">Top 5 Chỉ Tiêu Cao Nhất</p>
+        {/* Phải: Top Thời Gian Hộ Dân Nộp Kê Khai */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3 flex flex-col transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-md">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-bold text-slate-700">Top Thời Gian Hộ Nộp Kê Khai</p>
+            <div className="relative">
+              <button
+                onClick={() => setMoDropdownSortHo(!moDropdownSortHo)}
+                className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-[11px] text-slate-600 hover:bg-slate-100 transition-colors flex-shrink-0"
+              >
+                <span>{sortHoNhanhNhat ? 'Nhanh nhất' : 'Lâu nhất'}</span>
+                <ChevronDown size={12} className={`transition-transform duration-200 ${moDropdownSortHo ? 'rotate-180' : ''}`} />
+              </button>
+              {moDropdownSortHo && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setMoDropdownSortHo(false)} />
+                  <div className="absolute right-0 top-full mt-1 w-32 bg-white border border-slate-200 rounded-lg shadow-xl z-50 overflow-hidden">
+                    <button
+                      onClick={() => { setSortHoNhanhNhat(true); setMoDropdownSortHo(false) }}
+                      className={`w-full text-left px-3 py-2 text-xs transition-colors ${sortHoNhanhNhat ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-600 hover:bg-slate-50'}`}
+                    >
+                      Nhanh nhất
+                    </button>
+                    <button
+                      onClick={() => { setSortHoNhanhNhat(false); setMoDropdownSortHo(false) }}
+                      className={`w-full text-left px-3 py-2 text-xs transition-colors ${!sortHoNhanhNhat ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-600 hover:bg-slate-50'}`}
+                    >
+                      Lâu nhất
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+          {topHoSorted.length > 0 ? (
+            <div className="flex-1 overflow-y-auto flex flex-col">
+              {topHoSorted.map((ho, i) => (
+                <div key={ho.tenHo} className="group flex items-center gap-2.5 cursor-default px-1" style={{ flex: '0 0 20%' }}>
+                  <span className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 flex-shrink-0">
+                    {i + 1}
+                  </span>
+                  <span className="text-sm text-slate-600 group-hover:text-blue-600 flex-1 truncate transition-colors duration-100" title={ho.tenHo}>{ho.tenHo}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <p className="text-xs text-slate-400">Chưa có dữ liệu</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -86,6 +86,9 @@ export default function TrangChuXa() {
   const [tongHopCT, setTongHopCT] = useState([])
   const [duLieuCTTheoThon, setDuLieuCTTheoThon] = useState({})
   const [soNhiemVuHoatDong, setSoNhiemVuHoatDong] = useState(0)
+  const [topThonNopNhanh, setTopThonNopNhanh] = useState([])
+  const [sortNhanhNhat, setSortNhanhNhat] = useState(true)
+  const [moDropdownSort, setMoDropdownSort] = useState(false)
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -166,6 +169,32 @@ export default function TrangChuXa() {
       .catch(() => {})
   }, [baoCaoChon])
 
+  useEffect(() => {
+    if (danhSachBaoCao.length === 0) return
+    api.get('/periods').then(async periods => {
+      if (!periods?.length) return
+      const tichLuy: Record<string, { tong: number; soDot: number }> = {}
+      await Promise.all(periods.map(async dot => {
+        const dsKeKhai = await api.get(`/village-declarations?dot_id=${dot.id}`).catch(() => [])
+        if (!dsKeKhai?.length) return
+        const ngayBD = new Date(dot.ngay_bat_dau).getTime()
+        const ngayKT = new Date(dot.ngay_ket_thuc).getTime()
+        dsKeKhai.forEach(kt => {
+          if (!tichLuy[kt.ten_thon]) tichLuy[kt.ten_thon] = { tong: 0, soDot: 0 }
+          const thoiGianNop = kt.trang_thai === 'da_nop_xa' && kt.updated_at
+            ? new Date(kt.updated_at).getTime()
+            : ngayKT
+          tichLuy[kt.ten_thon].tong += Math.max(0, thoiGianNop - ngayBD)
+          tichLuy[kt.ten_thon].soDot += 1
+        })
+      }))
+      const ranking = Object.entries(tichLuy)
+        .map(([ten, d]) => ({ tenThon: ten, tbGio: d.tong / d.soDot / (1000 * 60 * 60) }))
+        .sort((a, b) => a.tbGio - b.tbGio)
+      setTopThonNopNhanh(ranking)
+    }).catch(() => {})
+  }, [danhSachBaoCao])
+
   const duLieuBieuDo = tongHopCT
 
   const baoCaoHienTai = danhSachBaoCao.find(bc => bc.id === baoCaoChon) || { soThonDaNop: 0, tongSoThon: 10, ten: '' }
@@ -175,6 +204,11 @@ export default function TrangChuXa() {
     { ten: 'Đã nộp', giaTri: baoCaoHienTai.soThonDaNop },
     { ten: 'Chưa nộp', giaTri: baoCaoHienTai.tongSoThon - baoCaoHienTai.soThonDaNop },
   ]
+
+  const topThonSorted = useMemo(() => {
+    const arr = [...topThonNopNhanh]
+    return sortNhanhNhat ? arr.sort((a, b) => a.tbGio - b.tbGio) : arr.sort((a, b) => b.tbGio - a.tbGio)
+  }, [topThonNopNhanh, sortNhanhNhat])
 
   const duLieuTheoThon = useMemo(() => {
     return Object.entries(duLieuCTTheoThon).map(([ten, data]) => ({
@@ -493,8 +527,55 @@ export default function TrangChuXa() {
           </div>
         </div>
 
-        {/* Phải: khung trống */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3 min-h-[220px] flex flex-col transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-md">
+        {/* Phải: Top thời gian thôn nộp báo cáo */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3 flex flex-col transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-md">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-bold text-slate-700">Top Thời Gian Thôn Nộp Báo Cáo</p>
+            <div className="relative">
+              <button
+                onClick={() => setMoDropdownSort(!moDropdownSort)}
+                className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-[11px] text-slate-600 hover:bg-slate-100 transition-colors flex-shrink-0"
+              >
+                <span>{sortNhanhNhat ? 'Nhanh nhất' : 'Lâu nhất'}</span>
+                <ChevronDown size={12} className={`transition-transform duration-200 ${moDropdownSort ? 'rotate-180' : ''}`} />
+              </button>
+              {moDropdownSort && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setMoDropdownSort(false)} />
+                  <div className="absolute right-0 top-full mt-1 w-32 bg-white border border-slate-200 rounded-lg shadow-xl z-50 overflow-hidden">
+                    <button
+                      onClick={() => { setSortNhanhNhat(true); setMoDropdownSort(false) }}
+                      className={`w-full text-left px-3 py-2 text-xs transition-colors ${sortNhanhNhat ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-600 hover:bg-slate-50'}`}
+                    >
+                      Nhanh nhất
+                    </button>
+                    <button
+                      onClick={() => { setSortNhanhNhat(false); setMoDropdownSort(false) }}
+                      className={`w-full text-left px-3 py-2 text-xs transition-colors ${!sortNhanhNhat ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-600 hover:bg-slate-50'}`}
+                    >
+                      Lâu nhất
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+          {topThonSorted.length > 0 ? (
+            <div className="flex-1 flex flex-col overflow-y-auto">
+              {topThonSorted.map((thon, i) => (
+                <div key={thon.tenThon} className="group flex items-center gap-2.5 cursor-default px-1" style={{ flex: '0 0 20%' }}>
+                  <span className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 flex-shrink-0">
+                    {i + 1}
+                  </span>
+                  <span className="text-sm text-slate-600 group-hover:text-blue-600 flex-1 truncate transition-colors duration-100" title={thon.tenThon}>{thon.tenThon}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <p className="text-xs text-slate-400">Chưa có dữ liệu</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

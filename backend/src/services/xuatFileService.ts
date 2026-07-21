@@ -239,7 +239,7 @@ export async function xuatExcelTongHop(dotId) {
     wsPT.mergeCells(row.number, 7, row.number, 8)
   })
 
-  // --- Phần B: Tiến độ theo thôn ---
+  // --- Phần B: Tiến độ theo thôn (biểu đồ trực quan + highlight) ---
   let ptRow = 9
   wsPT.getRow(ptRow).height = 10
   ptRow++
@@ -254,10 +254,10 @@ export async function xuatExcelTongHop(dotId) {
   ptRow++
 
   const tdHeader = wsPT.getRow(ptRow)
-  tdHeader.values = ['Thôn', '', 'Tổng hộ', 'Đã kê khai', 'Đã duyệt', 'Trả lại', 'Tỷ lệ duyệt', '']
+  tdHeader.values = ['Thôn', '', 'Tổng hộ', 'Đã kê khai', 'Đã duyệt', 'Trả lại', 'Tỷ lệ duyệt', 'Biểu đồ']
   tdHeader.height = 26
   wsPT.mergeCells(ptRow, 1, ptRow, 2)
-  for (let col = 1; col <= 7; col++) {
+  for (let col = 1; col <= 8; col++) {
     const cell = tdHeader.getCell(col)
     cell.font = { name: 'Times New Roman', size: 10, bold: true, color: mauTrang }
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: mauXanh }
@@ -266,6 +266,15 @@ export async function xuatExcelTongHop(dotId) {
   }
   ptRow++
 
+  const tiLeThon = duLieuThon.map(thon => {
+    const td = thon.tien_do || {}
+    const tgHo = parseInt(td.tong_ho) || 0
+    const daDuyet = parseInt(td.da_duyet) || 0
+    return tgHo > 0 ? Math.round((daDuyet / tgHo) * 1000) / 10 : 0
+  })
+  const maxTiLeDuyet = Math.max(...tiLeThon)
+  const minTiLeDuyet = Math.min(...tiLeThon)
+
   duLieuThon.forEach((thon, i) => {
     const row = wsPT.getRow(ptRow)
     const td = thon.tien_do || {}
@@ -273,33 +282,51 @@ export async function xuatExcelTongHop(dotId) {
     const daDuyet = parseInt(td.da_duyet) || 0
     const daKK = parseInt(td.da_ke_khai) || 0
     const tl = parseInt(td.tra_lai) || 0
-    const tiLe = tgHo > 0 ? Math.round((daDuyet / tgHo) * 1000) / 10 : 0
+    const tiLe = tiLeThon[i]
 
-    row.values = [thon.ten_thon, '', tgHo, daKK, daDuyet, tl, `${tiLe}%`, '']
+    const barLen = 20
+    const filled = Math.round((tiLe / 100) * barLen)
+    const bar = '█'.repeat(filled) + '░'.repeat(barLen - filled)
+
+    row.values = [thon.ten_thon, '', tgHo, daKK, daDuyet, tl, `${tiLe}%`, bar]
     row.height = 24
     wsPT.mergeCells(ptRow, 1, ptRow, 2)
 
-    for (let col = 1; col <= 7; col++) {
+    for (let col = 1; col <= 8; col++) {
       const cell = row.getCell(col)
       cell.font = { name: 'Times New Roman', size: 10 }
       cell.alignment = { horizontal: col <= 2 ? 'left' : 'center', vertical: 'middle' }
       boVien(cell)
       if (i % 2 === 0) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: mauXam }
+
       if (col === 7) {
-        cell.font = { name: 'Times New Roman', size: 10, bold: true, color: tiLe >= 100 ? { argb: 'FF059669' } : tiLe >= 50 ? { argb: 'FFD97706' } : { argb: 'FFDC2626' } }
+        const mauTiLe = tiLe >= 80 ? { argb: 'FF059669' } : tiLe >= 50 ? { argb: 'FFD97706' } : { argb: 'FFDC2626' }
+        cell.font = { name: 'Times New Roman', size: 10, bold: true, color: mauTiLe }
+        if (duLieuThon.length > 1 && tiLe === maxTiLeDuyet && maxTiLeDuyet > minTiLeDuyet) {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFECFDF5' } }
+        } else if (duLieuThon.length > 1 && tiLe === minTiLeDuyet && minTiLeDuyet < maxTiLeDuyet) {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } }
+        }
+      }
+
+      if (col === 8) {
+        const mauBar = tiLe >= 80 ? { argb: 'FF059669' } : tiLe >= 50 ? { argb: 'FFD97706' } : { argb: 'FFDC2626' }
+        cell.font = { name: 'Consolas', size: 9, color: mauBar }
+        cell.alignment = { horizontal: 'left', vertical: 'middle' }
       }
     }
     ptRow++
   })
 
-  // --- Phần C: Tỷ lệ % chỉ tiêu theo thôn ---
+  // --- Phần C: Tỷ lệ % chỉ tiêu theo thôn (highlight min/max + bar) ---
   ptRow++
   wsPT.getRow(ptRow).height = 10
   ptRow++
 
-  wsPT.mergeCells(`A${ptRow}:H${ptRow}`)
+  const cotPT = cotExcel(duLieuThon.length + 4)
+  wsPT.mergeCells(`A${ptRow}:${cotPT}${ptRow}`)
   const ptSecC = wsPT.getCell(`A${ptRow}`)
-  ptSecC.value = 'TỶ LỆ CHỈ TIÊU THEO THÔN (% so với tổng hộ)'
+  ptSecC.value = 'TỶ LỆ CHỈ TIÊU THEO THÔN (% so với tổng hộ)  ■ Cao nhất  ■ Thấp nhất'
   ptSecC.font = { name: 'Times New Roman', size: 12, bold: true, color: { argb: 'FF1E40AF' } }
   ptSecC.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } }
   ptSecC.alignment = { horizontal: 'left', vertical: 'middle' }
@@ -307,11 +334,12 @@ export async function xuatExcelTongHop(dotId) {
   ptRow++
 
   const ctCoTyLe = danhSachCTXuat.filter(ct => ct.ma !== 'CT01' && ct.ma !== 'CT02')
-  const soCotTL = Math.min(duLieuThon.length + 2, 12)
+  const soCotTL = duLieuThon.length + 4
 
   const tlHeader = wsPT.getRow(ptRow)
-  const tlHValues = ['Chỉ tiêu', '']
-  duLieuThon.slice(0, soCotTL - 2).forEach(t => tlHValues.push(t.ten_thon))
+  const tlHValues = ['Chỉ tiêu', '', 'TB xã']
+  duLieuThon.forEach(t => tlHValues.push(t.ten_thon))
+  tlHValues.push('Biểu đồ TB')
   tlHeader.values = tlHValues
   tlHeader.height = 28
   wsPT.mergeCells(ptRow, 1, ptRow, 2)
@@ -326,13 +354,24 @@ export async function xuatExcelTongHop(dotId) {
 
   ctCoTyLe.forEach((ct, i) => {
     const row = wsPT.getRow(ptRow)
-    const vals = [`${ct.ma} — ${ct.ten}`, '']
-    duLieuThon.slice(0, soCotTL - 2).forEach(thon => {
+
+    const pctList: number[] = []
+    duLieuThon.forEach(thon => {
       const tongHoThon = parseInt(thon.ct01_tong_ho) || 1
       const giaTriCT = parseInt(thon[ct.key]) || 0
-      const pct = Math.round((giaTriCT / tongHoThon) * 1000) / 10
-      vals.push(`${pct}%`)
+      pctList.push(Math.round((giaTriCT / tongHoThon) * 1000) / 10)
     })
+    const tbXa = pctList.length > 0 ? Math.round(pctList.reduce((s, v) => s + v, 0) / pctList.length * 10) / 10 : 0
+    const maxPct = Math.max(...pctList)
+    const minPct = Math.min(...pctList)
+
+    const vals: any[] = [`${ct.ma} — ${ct.ten}`, '', `${tbXa}%`]
+    pctList.forEach(p => vals.push(`${p}%`))
+
+    const barLen = 15
+    const filled = Math.round((Math.min(tbXa, 100) / 100) * barLen)
+    vals.push('█'.repeat(filled) + '░'.repeat(barLen - filled))
+
     row.values = vals
     row.height = 24
     wsPT.mergeCells(ptRow, 1, ptRow, 2)
@@ -343,18 +382,40 @@ export async function xuatExcelTongHop(dotId) {
       cell.alignment = { horizontal: col <= 2 ? 'left' : 'center', vertical: 'middle' }
       boVien(cell)
       if (i % 2 === 0) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: mauXam }
+
+      if (col === 3) {
+        cell.font = { name: 'Times New Roman', size: 10, bold: true, color: mauXanh }
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: mauVang }
+      }
+
+      if (col >= 4 && col <= 3 + duLieuThon.length && duLieuThon.length > 1 && maxPct > minPct) {
+        const pctVal = pctList[col - 4]
+        if (pctVal === maxPct) {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFECFDF5' } }
+          cell.font = { name: 'Times New Roman', size: 10, bold: true, color: { argb: 'FF059669' } }
+        } else if (pctVal === minPct) {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } }
+          cell.font = { name: 'Times New Roman', size: 10, bold: true, color: { argb: 'FFDC2626' } }
+        }
+      }
+
+      if (col === soCotTL) {
+        const mauBar = tbXa >= 50 ? { argb: 'FF059669' } : tbXa >= 20 ? { argb: 'FFD97706' } : { argb: 'FFDC2626' }
+        cell.font = { name: 'Consolas', size: 8, color: mauBar }
+        cell.alignment = { horizontal: 'left', vertical: 'middle' }
+      }
     }
     ptRow++
   })
 
-  // --- Phần D: Xếp hạng thôn (Top cao nhất / thấp nhất) ---
+  // --- Phần D: Xếp hạng thôn + thôn cần cải thiện ---
   ptRow++
   wsPT.getRow(ptRow).height = 10
   ptRow++
 
   wsPT.mergeCells(`A${ptRow}:H${ptRow}`)
   const ptSecD = wsPT.getCell(`A${ptRow}`)
-  ptSecD.value = 'XẾP HẠNG THÔN THEO CHỈ TIÊU'
+  ptSecD.value = 'XẾP HẠNG THÔN THEO CHỈ TIÊU (Top cao nhất)'
   ptSecD.font = { name: 'Times New Roman', size: 12, bold: true, color: { argb: 'FF1E40AF' } }
   ptSecD.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } }
   ptSecD.alignment = { horizontal: 'left', vertical: 'middle' }
@@ -362,7 +423,7 @@ export async function xuatExcelTongHop(dotId) {
   ptRow++
 
   const xhHeader = wsPT.getRow(ptRow)
-  xhHeader.values = ['Chỉ tiêu', '', 'Top 1', 'Giá trị', 'Top 2', 'Giá trị', 'Top 3', 'Giá trị']
+  xhHeader.values = ['Chỉ tiêu', '', '#1', 'Giá trị', '#2', 'Giá trị', '#3', 'Giá trị']
   xhHeader.height = 26
   wsPT.mergeCells(ptRow, 1, ptRow, 2)
   for (let col = 1; col <= 8; col++) {
@@ -374,6 +435,12 @@ export async function xuatExcelTongHop(dotId) {
   }
   ptRow++
 
+  const topColors = [
+    { argb: 'FFD97706' },
+    { argb: 'FF6B7280' },
+    { argb: 'FF92400E' },
+  ]
+
   danhSachCTXuat.forEach((ct, i) => {
     const sorted = duLieuThon
       .map(t => ({ ten: t.ten_thon, giaTri: parseInt(t[ct.key]) || 0 }))
@@ -381,7 +448,7 @@ export async function xuatExcelTongHop(dotId) {
       .sort((a, b) => b.giaTri - a.giaTri)
 
     const row = wsPT.getRow(ptRow)
-    const vals = [`${ct.ma} — ${ct.ten}`, '']
+    const vals: any[] = [`${ct.ma} — ${ct.ten}`, '']
     for (let k = 0; k < 3; k++) {
       if (sorted[k]) {
         vals.push(sorted[k].ten, String(sorted[k].giaTri))
@@ -399,8 +466,81 @@ export async function xuatExcelTongHop(dotId) {
       cell.alignment = { horizontal: col <= 2 ? 'left' : 'center', vertical: 'middle' }
       boVien(cell)
       if (i % 2 === 0) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: mauXam }
-      if (col === 3) cell.font = { name: 'Times New Roman', size: 10, bold: true, color: { argb: 'FFD97706' } }
-      if (col === 4) cell.font = { name: 'Times New Roman', size: 10, bold: true }
+
+      if (col === 3 || col === 5 || col === 7) {
+        const topIdx = (col - 3) / 2
+        cell.font = { name: 'Times New Roman', size: 10, bold: true, color: topColors[topIdx] }
+      }
+      if (col === 4 || col === 6 || col === 8) {
+        cell.font = { name: 'Times New Roman', size: 10, bold: true }
+      }
+    }
+    ptRow++
+  })
+
+  // --- Phần E: Thôn cần cải thiện (thấp nhất) ---
+  ptRow++
+  wsPT.getRow(ptRow).height = 10
+  ptRow++
+
+  wsPT.mergeCells(`A${ptRow}:H${ptRow}`)
+  const ptSecE = wsPT.getCell(`A${ptRow}`)
+  ptSecE.value = 'THÔN CẦN CẢI THIỆN (Thấp nhất theo chỉ tiêu)'
+  ptSecE.font = { name: 'Times New Roman', size: 12, bold: true, color: { argb: 'FF991B1B' } }
+  ptSecE.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } }
+  ptSecE.alignment = { horizontal: 'left', vertical: 'middle' }
+  wsPT.getRow(ptRow).height = 28
+  ptRow++
+
+  const btmHeader = wsPT.getRow(ptRow)
+  btmHeader.values = ['Chỉ tiêu', '', 'Thôn thấp nhất', 'Giá trị', 'TB xã', 'Chênh lệch', '', '']
+  btmHeader.height = 26
+  wsPT.mergeCells(ptRow, 1, ptRow, 2)
+  for (let col = 1; col <= 6; col++) {
+    const cell = btmHeader.getCell(col)
+    cell.font = { name: 'Times New Roman', size: 10, bold: true, color: mauTrang }
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDC2626' } }
+    cell.alignment = { horizontal: 'center', vertical: 'middle' }
+    boVien(cell)
+  }
+  ptRow++
+
+  danhSachCTXuat.forEach((ct, i) => {
+    const sorted = duLieuThon
+      .map(t => ({ ten: t.ten_thon, giaTri: parseInt(t[ct.key]) || 0 }))
+      .sort((a, b) => a.giaTri - b.giaTri)
+
+    const tbXaCT = duLieuThon.length > 0
+      ? Math.round(duLieuThon.reduce((s, t) => s + (parseInt(t[ct.key]) || 0), 0) / duLieuThon.length)
+      : 0
+
+    const row = wsPT.getRow(ptRow)
+    const lowest = sorted[0]
+    const chenhLech = lowest ? lowest.giaTri - tbXaCT : 0
+
+    const vals: any[] = [
+      `${ct.ma} — ${ct.ten}`, '',
+      lowest?.ten || '—',
+      lowest ? String(lowest.giaTri) : '',
+      String(tbXaCT),
+      chenhLech !== 0 ? String(chenhLech) : '0',
+      '', '',
+    ]
+    row.values = vals
+    row.height = 24
+    wsPT.mergeCells(ptRow, 1, ptRow, 2)
+
+    for (let col = 1; col <= 6; col++) {
+      const cell = row.getCell(col)
+      cell.font = { name: 'Times New Roman', size: 10 }
+      cell.alignment = { horizontal: col <= 2 ? 'left' : 'center', vertical: 'middle' }
+      boVien(cell)
+      if (i % 2 === 0) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: mauXam }
+
+      if (col === 3) cell.font = { name: 'Times New Roman', size: 10, bold: true, color: { argb: 'FFDC2626' } }
+      if (col === 6 && chenhLech < 0) {
+        cell.font = { name: 'Times New Roman', size: 10, bold: true, color: { argb: 'FFDC2626' } }
+      }
     }
     ptRow++
   })
@@ -408,9 +548,70 @@ export async function xuatExcelTongHop(dotId) {
   // Column widths cho sheet phân tích
   wsPT.getColumn(1).width = 14
   wsPT.getColumn(2).width = 22
-  for (let c = 3; c <= 8; c++) wsPT.getColumn(c).width = 16
+  const maxCotPT = duLieuThon.length + 4
+  for (let c = 3; c <= maxCotPT; c++) wsPT.getColumn(c).width = 16
 
-  // === Sheet 3+: Chi tiết từng thôn ===
+  // === Sheet 3: Dữ liệu gốc (flat table cho PivotTable) ===
+  const wsDL = workbook.addWorksheet('Dữ liệu gốc', { properties: { defaultColWidth: 18 } })
+
+  wsDL.mergeCells('A1:F1')
+  const dlTieuDe = wsDL.getCell('A1')
+  dlTieuDe.value = 'DỮ LIỆU GỐC — Sẵn sàng tạo PivotTable / Chart trong Excel'
+  dlTieuDe.font = { name: 'Times New Roman', size: 13, bold: true, color: mauXanh }
+  dlTieuDe.alignment = { horizontal: 'center', vertical: 'middle' }
+  wsDL.getRow(1).height = 32
+
+  wsDL.mergeCells('A2:F2')
+  const dlHuongDan = wsDL.getCell('A2')
+  dlHuongDan.value = 'Chọn vùng dữ liệu → Insert → PivotTable hoặc Chart để phân tích nâng cao'
+  dlHuongDan.font = { name: 'Times New Roman', size: 10, italic: true, color: { argb: 'FF64748B' } }
+  dlHuongDan.alignment = { horizontal: 'center', vertical: 'middle' }
+  wsDL.getRow(2).height = 22
+
+  wsDL.getRow(3).height = 8
+
+  const dlHeaderRow = wsDL.getRow(4)
+  const dlHeaders = ['Thôn', 'Mã CT', 'Chỉ tiêu', 'Giá trị', 'Tổng hộ thôn', '% so tổng hộ']
+  dlHeaderRow.values = dlHeaders
+  dlHeaderRow.height = 28
+
+  wsDL.getColumn(1).width = 16
+  wsDL.getColumn(2).width = 10
+  wsDL.getColumn(3).width = 38
+  wsDL.getColumn(4).width = 14
+  wsDL.getColumn(5).width = 14
+  wsDL.getColumn(6).width = 14
+
+  for (let col = 1; col <= 6; col++) {
+    const cell = dlHeaderRow.getCell(col)
+    cell.font = { name: 'Times New Roman', size: 11, bold: true, color: mauTrang }
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: mauXanh }
+    cell.alignment = { horizontal: 'center', vertical: 'middle' }
+    boVien(cell)
+  }
+
+  let dlRow = 5
+  duLieuThon.forEach(thon => {
+    const tongHoThon = parseInt(thon.ct01_tong_ho) || 0
+    danhSachCTXuat.forEach((ct, i) => {
+      const giaTri = parseInt(thon[ct.key]) || 0
+      const phanTram = tongHoThon > 0 ? Math.round((giaTri / tongHoThon) * 1000) / 10 : 0
+      const row = wsDL.getRow(dlRow)
+      row.values = [thon.ten_thon, ct.ma, ct.ten, giaTri, tongHoThon, phanTram]
+      row.height = 22
+
+      for (let col = 1; col <= 6; col++) {
+        const cell = row.getCell(col)
+        cell.font = { name: 'Times New Roman', size: 10 }
+        cell.alignment = { horizontal: col <= 3 ? 'left' : 'center', vertical: 'middle' }
+        boVien(cell)
+        if ((dlRow - 5) % 2 === 0) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: mauXam }
+      }
+      dlRow++
+    })
+  })
+
+  // === Sheet 4+: Chi tiết từng thôn ===
   for (const thon of duLieuThon) {
     const wsThon = workbook.addWorksheet(thon.ten_thon, {
       properties: { defaultColWidth: 20 },

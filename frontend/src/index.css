@@ -55,3 +55,20 @@
 body {
   margin: 0;
 }
+
+/* Markdown trong chatbot bot messages */
+.chatbot-md p { margin: 0.3em 0; }
+.chatbot-md p:first-child { margin-top: 0; }
+.chatbot-md p:last-child { margin-bottom: 0; }
+.chatbot-md strong { font-weight: 600; }
+.chatbot-md ul, .chatbot-md ol { margin: 0.3em 0; padding-left: 1.3em; }
+.chatbot-md li { margin: 0.15em 0; }
+.chatbot-md h1, .chatbot-md h2, .chatbot-md h3 { font-weight: 600; margin: 0.4em 0 0.2em; }
+.chatbot-md h1 { font-size: 1.05em; }
+.chatbot-md h2 { font-size: 1em; }
+.chatbot-md h3 { font-size: 0.95em; }
+.chatbot-md code { background: #f1f5f9; padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.85em; }
+.chatbot-md pre { background: #f1f5f9; padding: 0.5em; border-radius: 6px; overflow-x: auto; margin: 0.3em 0; }
+.chatbot-md pre code { background: none; padding: 0; }
+.chatbot-md a { color: #3348B5; text-decoration: underline; }
+.chatbot-md blockquote { border-left: 3px solid #cbd5e1; padding-left: 0.6em; margin: 0.3em 0; color: #64748b; }

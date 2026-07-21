@@ -32,7 +32,7 @@ export async function insertChunks(chunks: ChunkInput[]): Promise<number> {
   return inserted
 }
 
-// Tim chunk gan nhat theo cosine. Dan chi thay tai lieu vai tro cua minh + 'chung'.
+// Tim chunk gan nhat theo cosine. Moi vai tro chi thay tai lieu cua minh + 'chung'.
 export async function searchChunks(embedding: number[], vaiTro: string, topK: number): Promise<ChunkMatch[]> {
   const result = await query(
     `SELECT noi_dung, vai_tro, metadata,

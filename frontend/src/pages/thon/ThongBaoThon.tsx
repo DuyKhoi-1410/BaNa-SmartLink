@@ -91,7 +91,7 @@ export default function ThongBaoThon() {
         const thonId = nguoiDung?.thon_id
         const url = thonId ? `/notifications?thon_id=${thonId}` : '/notifications'
         const data = await api.get(url)
-        setDanhSach(data.map(tb => ({
+        const mapped = data.map(tb => ({
           id: tb.id,
           loai: mapLoai(tb.loai),
           nhiemVuId: tb.dot_id,
@@ -99,7 +99,14 @@ export default function ThongBaoThon() {
           noiDung: tb.noi_dung,
           thoiGian: formatThoiGian(tb.created_at),
           daDoc: tb.da_doc || false,
-        })))
+        }))
+        setDanhSach(mapped)
+        if (mapped.some(tb => !tb.daDoc)) {
+          const markUrl = thonId ? `/notifications/doc-tat-ca?thon_id=${thonId}` : '/notifications/doc-tat-ca'
+          api.patch(markUrl).then(() => {
+            setDanhSach(prev => prev.map(tb => ({ ...tb, daDoc: true })))
+          }).catch(() => {})
+        }
       } catch (err) {
         console.error('Loi tai thong bao thon:', err)
       } finally {
@@ -127,6 +134,9 @@ export default function ThongBaoThon() {
 
   const danhDauTatCaDaDoc = () => {
     setDanhSach(prev => prev.map(tb => ({ ...tb, daDoc: true })))
+    const thonId = nguoiDung?.thon_id
+    const url = thonId ? `/notifications/doc-tat-ca?thon_id=${thonId}` : '/notifications/doc-tat-ca'
+    api.patch(url).catch(() => {})
   }
 
   if (dangTai) {

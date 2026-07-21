@@ -91,7 +91,7 @@ Truy cập: **http://localhost:3000**
 | Cán bộ thôn | `canbothon1` đến `canbothon10` | `demo123` |
 | Người dân | CCCD `048025000001` đến `048025000030` | `demo123` |
 
-> Mỗi thôn có 3 hộ dân. Thôn 1: CCCD 001-003, Thôn 2: 004-006, ...
+> Mỗi thôn có 3 hộ dân. Phú Hoà: CCCD 001-003, Thái Lai: 004-006, ...
 
 ## Tài liệu
 

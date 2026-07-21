@@ -96,6 +96,11 @@ export default function ThongBaoDan() {
           daDoc: tb.da_doc || false,
         }))
         setDanhSach(mapped)
+        if (mapped.some(tb => !tb.daDoc)) {
+          api.patch('/notifications/doc-tat-ca').then(() => {
+            setDanhSach(prev => prev.map(tb => ({ ...tb, daDoc: true })))
+          }).catch(() => {})
+        }
       } catch (err) {
         console.error('Loi tai thong bao:', err)
       } finally {
@@ -123,6 +128,7 @@ export default function ThongBaoDan() {
 
   const danhDauTatCaDaDoc = () => {
     setDanhSach(prev => prev.map(tb => ({ ...tb, daDoc: true })))
+    api.patch('/notifications/doc-tat-ca').catch(() => {})
   }
 
   if (dangTai) {

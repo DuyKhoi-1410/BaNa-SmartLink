@@ -27,11 +27,17 @@ export default function NhiemVuThon() {
       const nhiemVuList = await Promise.all(
         periods.map(async (dot) => {
           let tienDo: any = { tong_ho: 0, da_ke_khai: 0, da_duyet: 0, tra_lai: 0 }
+          let daNopXa = false
           if (thonId) {
             try {
               tienDo = await api.get(`/reports/tien-do/${dot.id}?thon_id=${thonId}`)
             } catch {}
+            try {
+              const keKhaiThon = await api.get(`/village-declarations/${dot.id}/${thonId}`)
+              daNopXa = keKhaiThon?.trang_thai === 'da_nop_xa'
+            } catch {}
           }
+          const danKhongCanKe = !!tienDo.dan_khong_can_ke
           const tongHo = parseInt(tienDo.tong_ho) || 0
           const daKeKhai = parseInt(tienDo.da_ke_khai) || 0
           const daDuyet = parseInt(tienDo.da_duyet) || 0
@@ -47,6 +53,8 @@ export default function NhiemVuThon() {
             chiTieu: (dot.chi_tieu && dot.chi_tieu.length > 0) ? dot.chi_tieu : tatCaChiTieu,
             tongSoHo: tongHo,
             soHoDaNop: daKeKhai,
+            daNopXa,
+            danKhongCanKe,
             thongKe: {
               tongHo,
               daNop: daKeKhai,
@@ -55,6 +63,7 @@ export default function NhiemVuThon() {
               daDuyet,
               ptDaDuyet: tongHo > 0 ? Math.round((daDuyet / tongHo) * 100) : 0,
               ptChoDuyet: tongHo > 0 ? Math.round((choDuyet / tongHo) * 100) : 0,
+              danKhongCanKe,
             },
           }
         })
@@ -210,6 +219,12 @@ export default function NhiemVuThon() {
                           Còn {trangThai.soNgayCon} ngày
                         </span>
                       )}
+                      {nv.daNopXa && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                          <CheckCircle2 size={12} />
+                          Đã nộp xã
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -227,42 +242,53 @@ export default function NhiemVuThon() {
                     </div>
 
                     <div className="sm:ml-auto w-full sm:w-80">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
-                          <Users size={15} className="text-blue-500" />
-                          {soDaNop}/{tongHo} hộ đã nộp
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <div className="flex items-center gap-3 text-xs">
-                          <span className="flex items-center gap-1">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-                            <span className="text-emerald-700 font-semibold">{soDaDuyet} duyệt</span>
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
-                            <span className="text-amber-700 font-semibold">{soChoDuyet} chờ</span>
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <span className="w-2 h-2 rounded-full bg-slate-300 inline-block" />
-                            <span className="text-slate-500 font-semibold">{soChuaNop} chưa</span>
+                      {nv.danKhongCanKe ? (
+                        <div className="flex items-center gap-2 py-1">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-500">
+                            <CheckCircle2 size={13} />
+                            Đợt này chỉ thôn kê khai — dân không cần kê
                           </span>
                         </div>
-                      </div>
-                      <div className="h-3 md:h-4 bg-slate-100 rounded-full overflow-hidden flex">
-                        {ptDaDuyet > 0 && (
-                          <div
-                            className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all duration-700 ease-out"
-                            style={{ width: `${ptDaDuyet}%` }}
-                          />
-                        )}
-                        {ptChoDuyet > 0 && (
-                          <div
-                            className="h-full bg-gradient-to-r from-amber-300 to-amber-400 transition-all duration-700 ease-out"
-                            style={{ width: `${ptChoDuyet}%` }}
-                          />
-                        )}
-                      </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                              <Users size={15} className="text-blue-500" />
+                              {soDaNop}/{tongHo} hộ đã nộp
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <div className="flex items-center gap-3 text-xs">
+                              <span className="flex items-center gap-1">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                                <span className="text-emerald-700 font-semibold">{soDaDuyet} duyệt</span>
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
+                                <span className="text-amber-700 font-semibold">{soChoDuyet} chờ</span>
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <span className="w-2 h-2 rounded-full bg-slate-300 inline-block" />
+                                <span className="text-slate-500 font-semibold">{soChuaNop} chưa</span>
+                              </span>
+                            </div>
+                          </div>
+                          <div className="h-3 md:h-4 bg-slate-100 rounded-full overflow-hidden flex">
+                            {ptDaDuyet > 0 && (
+                              <div
+                                className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all duration-700 ease-out"
+                                style={{ width: `${ptDaDuyet}%` }}
+                              />
+                            )}
+                            {ptChoDuyet > 0 && (
+                              <div
+                                className="h-full bg-gradient-to-r from-amber-300 to-amber-400 transition-all duration-700 ease-out"
+                                style={{ width: `${ptChoDuyet}%` }}
+                              />
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
