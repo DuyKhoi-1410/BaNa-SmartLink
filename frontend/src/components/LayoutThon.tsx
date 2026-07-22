@@ -364,7 +364,7 @@ export default function LayoutThon() {
       </header>
 
       {/* Nội dung chính */}
-      <main className="flex-1 min-h-[calc(100vh-4rem)]">
+      <main className="flex-1">
         <Outlet />
       </main>
 
