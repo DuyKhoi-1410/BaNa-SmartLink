@@ -5,6 +5,7 @@ import path from 'path'
 import { authMiddleware, requireRole } from '../middleware/auth.js'
 import * as dinhKemDotRepo from '../repositories/dinhKemDotRepo.js'
 import { asyncHandler, ok, loi } from '../utils/response.js'
+import { optimizeImage } from '../utils/imageOptimizer.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY
@@ -71,9 +72,11 @@ router.post('/:dotId', authMiddleware, requireRole('xa'), upload.single('file'),
     const ext = path.extname(fileName) || ''
     const storagePath = `dot-${dotId}/${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`
 
-    const fileUrl = await uploadToStorage(req.file.path, storagePath, req.file.mimetype)
+    const optimized = await optimizeImage(req.file.path, req.file.mimetype)
 
-    fs.unlinkSync(req.file.path)
+    const fileUrl = await uploadToStorage(optimized.path, storagePath, optimized.mimetype)
+
+    fs.unlinkSync(optimized.path)
 
     const record = await dinhKemDotRepo.taoMoi({
       dot_id: dotId,

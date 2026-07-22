@@ -20,9 +20,11 @@
     "exceljs": "^4.4.0",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
+    "jszip": "^3.10.1",
     "multer": "^2.2.0",
     "pdf-parse": "^1.1.1",
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "sharp": "^0.35.3"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",

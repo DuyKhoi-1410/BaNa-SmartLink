@@ -11,6 +11,7 @@ import { validateLoginDan, validateLoginCanBo, toUserResponse } from '../schema/
 import { authMiddleware } from '../middleware/auth.js'
 import { asyncHandler, ok, loi } from '../utils/response.js'
 import type { Request } from 'express'
+import { optimizeImage } from '../utils/imageOptimizer.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -226,8 +227,10 @@ router.post('/me/avatar', authMiddleware, avatarUpload.single('avatar'), asyncHa
     const ext = path.extname(req.file.originalname) || '.jpg'
     const storagePath = `user-${req.user.id}/${Date.now()}${ext}`
 
-    const avatarUrl = await uploadAvatarToStorage(req.file.path, storagePath, req.file.mimetype)
-    fs.unlinkSync(req.file.path)
+    const optimized = await optimizeImage(req.file.path, req.file.mimetype)
+
+    const avatarUrl = await uploadAvatarToStorage(optimized.path, storagePath, optimized.mimetype)
+    fs.unlinkSync(optimized.path)
 
     if (user.avatar_url) {
       await deleteAvatarFromStorage(user.avatar_url)

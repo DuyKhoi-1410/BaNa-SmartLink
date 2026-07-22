@@ -1194,7 +1194,7 @@ export default function KeKhai() {
                           {danhSachFile.map((f, i) => (
                             <div key={i} className="flex items-center gap-2 p-2 bg-emerald-50 rounded-lg border border-emerald-200">
                               {f.file.type.startsWith('image/') ? (
-                                <img src={f.url} alt={f.ten} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+                                <img src={f.url} alt={f.ten} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" loading="lazy" />
                               ) : (
                                 <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
                                   <FileText size={16} className="text-emerald-600" />

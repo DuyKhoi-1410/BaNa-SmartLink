@@ -27,9 +27,9 @@ export default function Footer() {
       <div className="relative max-w-7xl mx-auto px-4 md:px-6 pt-10 md:pt-12 pb-8">
         {/* Logo + Tên lớn ở trên */}
         <div className="flex items-center gap-3 md:gap-4 mb-6 md:mb-8">
-          <img src={logoIcon} alt="Logo Ba Na" className="h-12 md:h-16 object-contain" />
+          <img src={logoIcon} alt="Logo Ba Na" className="h-12 md:h-16 object-contain" loading="lazy" />
           <div>
-            <img src={logoChu} alt="Ba Na SmartLink" className="h-8 md:h-10 object-contain" />
+            <img src={logoChu} alt="Ba Na SmartLink" className="h-8 md:h-10 object-contain" loading="lazy" />
             <p className="text-white/70 text-xs md:text-sm mt-0.5">Nền tảng số hóa báo cáo xã — thôn</p>
           </div>
         </div>

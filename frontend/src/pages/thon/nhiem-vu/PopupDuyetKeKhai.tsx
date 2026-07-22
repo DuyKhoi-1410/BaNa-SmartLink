@@ -136,6 +136,7 @@ export default function PopupDuyetKeKhai({ hienPopup, dongPopup, hoDan, nhiemVu,
                               src={mc.file_url}
                               alt={mc.file_name}
                               className="w-full h-full object-cover"
+                              loading="lazy"
                             />
                             <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/30 transition-colors flex items-center justify-center">
                               <ZoomIn size={16} className="text-white opacity-0 group-hover/img:opacity-100 transition-opacity" />
@@ -296,6 +297,7 @@ export default function PopupDuyetKeKhai({ hienPopup, dongPopup, hoDan, nhiemVu,
             alt="Minh chứng phóng to"
             className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
             onClick={(e) => e.stopPropagation()}
+            loading="lazy"
           />
         </div>
       )}

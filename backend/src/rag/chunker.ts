@@ -14,16 +14,31 @@ export function chunkPdfQA(text: string, fileName: string): Chunk[] {
   const sections = detectSections(text)
 
   for (const section of sections) {
-    const questions = splitQuestions(section.text)
-    for (const q of questions) {
-      if (q.text.trim().length < 20) continue
+    let entries: string[]
+    switch (section.role) {
+      case 'dan':
+        entries = splitDanEntries(section.text)
+        break
+      case 'thon':
+        entries = splitThonEntries(section.text)
+        break
+      case 'xa':
+        entries = splitXaEntries(section.text)
+        break
+      default:
+        entries = splitGenericEntries(section.text)
+    }
+
+    for (let i = 0; i < entries.length; i++) {
+      const trimmed = entries[i].trim()
+      if (trimmed.length < 20) continue
       chunks.push({
-        noiDung: q.text.trim(),
+        noiDung: trimmed,
         vaiTro: section.role,
         metadata: {
           file: fileName,
           section: section.name,
-          questionId: q.id,
+          questionId: `Q${chunks.length + 1}`,
         },
       })
     }
@@ -99,24 +114,88 @@ function detectSections(text: string): Section[] {
   return sections
 }
 
-interface Question {
-  id: string
-  text: string
-}
+// Section Dan: entry bat dau bang "\d+\. " MA ngay sau co dong "Tags:" trong 3 dong ke tiep
+function splitDanEntries(text: string): string[] {
+  const lines = text.split('\n')
+  const entryStarts: number[] = []
 
-function splitQuestions(text: string): Question[] {
-  const questions: Question[] = []
-  const parts = text.split(/(?=(?:^|\n)\s*(?:\d+\.\s|Tags:\s))/gm)
+  for (let i = 0; i < lines.length; i++) {
+    if (!/^\d+\.\s/.test(lines[i].trim())) continue
 
-  let qIndex = 0
-  for (const part of parts) {
-    const trimmed = part.trim()
-    if (trimmed.length < 20) continue
-    if (/^(?:#|##)\s/.test(trimmed) && !trimmed.includes('Tags:') && !trimmed.includes('Câu hỏi:')) continue
-
-    qIndex++
-    questions.push({ id: `Q${qIndex}`, text: trimmed })
+    let found = false
+    let scanned = 0
+    for (let j = i + 1; j < lines.length && scanned < 3; j++) {
+      const next = lines[j].trim()
+      if (next === '') continue
+      scanned++
+      if (/^Tags:\s/i.test(next)) { found = true; break }
+      if (/^\d+\.\s/.test(next) || /^(Câu hỏi|Trả lời)/i.test(next)) break
+    }
+    if (found) entryStarts.push(i)
   }
 
-  return questions
+  const entries: string[] = []
+  for (let i = 0; i < entryStarts.length; i++) {
+    const start = entryStarts[i]
+    const end = i + 1 < entryStarts.length ? entryStarts[i + 1] : lines.length
+    entries.push(lines.slice(start, end).join('\n'))
+  }
+  return entries
+}
+
+// Section Thon (PHAN B): entry phan cach bang "---"
+function splitThonEntries(text: string): string[] {
+  const blocks = text.split(/\n\s*---\s*\n/)
+  const entries: string[] = []
+
+  for (const block of blocks) {
+    const trimmed = block.trim()
+    if (trimmed.length < 20) continue
+    if (!/\*\*Tags:\*\*|Tags:/i.test(trimmed)) continue
+    entries.push(trimmed)
+  }
+  return entries
+}
+
+// Section Xa (PHAN C): ben trong moi nhom ## C\d+. co nhieu entry, tach bang Tags:
+function splitXaEntries(text: string): string[] {
+  return splitByTagsAnchor(text)
+}
+
+// Fallback: thu --- roi ## roi Tags:
+function splitGenericEntries(text: string): string[] {
+  const hrParts = text.split(/\n\s*---\s*\n/)
+  if (hrParts.length > 1) {
+    return hrParts.filter(p => p.trim().length > 20).map(p => p.trim())
+  }
+
+  const headerParts = text.split(/(?=^##\s)/m)
+  if (headerParts.length > 1) {
+    return headerParts.filter(p => p.trim().length > 20).map(p => p.trim())
+  }
+
+  return splitByTagsAnchor(text)
+}
+
+function splitByTagsAnchor(text: string): string[] {
+  const lines = text.split('\n')
+  const entryStarts: number[] = []
+
+  for (let i = 0; i < lines.length; i++) {
+    if (/^(\*\*)?Tags:(\*\*)?\s/i.test(lines[i].trim())) {
+      let titleLine = i
+      for (let j = i - 1; j >= Math.max(0, i - 3); j--) {
+        if (lines[j].trim().length > 0) { titleLine = j; break }
+      }
+      entryStarts.push(titleLine)
+    }
+  }
+
+  const entries: string[] = []
+  for (let i = 0; i < entryStarts.length; i++) {
+    const start = entryStarts[i]
+    const end = i + 1 < entryStarts.length ? entryStarts[i + 1] : lines.length
+    entries.push(lines.slice(start, end).join('\n'))
+  }
+  return entries
 }

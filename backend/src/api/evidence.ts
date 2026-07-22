@@ -7,6 +7,7 @@ import * as minhChungRepo from '../repositories/minhChungRepo.js'
 import * as keKhaiHoRepo from '../repositories/keKhaiHoRepo.js'
 import { query } from '../repositories/db.js'
 import { asyncHandler, ok, loi } from '../utils/response.js'
+import { optimizeImage } from '../utils/imageOptimizer.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY
@@ -120,9 +121,11 @@ router.post('/', authMiddleware, upload.single('file'), asyncHandler(async (req,
     const folder = ke_khai_ho_id ? `ho-${ke_khai_ho_id}` : `thon-${ke_khai_thon_id}`
     const storagePath = `${folder}/${ma_chi_tieu.toUpperCase()}_${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`
 
-    const fileUrl = await uploadToStorage(req.file.path, storagePath, req.file.mimetype)
+    const optimized = await optimizeImage(req.file.path, req.file.mimetype)
 
-    fs.unlinkSync(req.file.path)
+    const fileUrl = await uploadToStorage(optimized.path, storagePath, optimized.mimetype)
+
+    fs.unlinkSync(optimized.path)
 
     const minhChung = await minhChungRepo.taoMoi({
       ke_khai_ho_id: ke_khai_ho_id ? parseInt(ke_khai_ho_id) : null,
