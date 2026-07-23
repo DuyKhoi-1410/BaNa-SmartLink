@@ -9,7 +9,7 @@ export async function keKhaiHo(data) {
   const phienBan = existing ? existing.phien_ban + 1 : 1
 
   const dsSua = data.danh_sach_thay_doi
-  const giuNguyenHet = Array.isArray(dsSua) && dsSua.length === 0
+  const giuNguyenHet = existing && Array.isArray(dsSua) && dsSua.length === 0
 
   const trangThai = giuNguyenHet ? 'da_duyet' : (data.trang_thai || 'da_ke_khai')
 
@@ -101,18 +101,22 @@ const CT_FIELD_MAP = {
 }
 
 export async function tongHopMoiNhat() {
-  const danhSachDot = await dotKeKhaiRepo.layTatCa()
-  if (danhSachDot.length === 0) return []
-
   const CT_THON = new Set(['CT09', 'CT12', 'CT13', 'CT14'])
   const ketQua: Record<number, Record<string, any>> = {}
   const daLapThon: Record<number, Set<string>> = {}
 
+  const tongHoRealtime = await hoDanRepo.demTheoTatCaThon()
+  for (const row of tongHoRealtime) {
+    ketQua[row.thon_id] = { thon_id: row.thon_id, ten_thon: row.ten_thon, ct01_tong_ho: parseInt(row.tong_ho) || 0 }
+    daLapThon[row.thon_id] = new Set(['CT01'])
+  }
+
+  const danhSachDot = await dotKeKhaiRepo.layTatCa()
   for (const dot of danhSachDot) {
     const chiTieuDot: string[] = Array.isArray(dot.chi_tieu) ? dot.chi_tieu : TAT_CA_CT
     const duLieuDot = await tongHopXa(dot.id)
     const thonRecords = await keKhaiThonRepo.layTheoDot(dot.id)
-    const coRecordThon = new Set(thonRecords.map(t => t.thon_id))
+    const daNopXa = new Set(thonRecords.filter(t => t.trang_thai === 'da_nop_xa').map(t => t.thon_id))
 
     for (const thon of duLieuDot) {
       if (!ketQua[thon.thon_id]) {
@@ -120,8 +124,9 @@ export async function tongHopMoiNhat() {
         daLapThon[thon.thon_id] = new Set()
       }
 
-      const coDuLieuHo = (thon.tien_do?.da_duyet || 0) > 0
-      const coDuLieuThon = coRecordThon.has(thon.thon_id)
+      const thonDaNopXa = daNopXa.has(thon.thon_id)
+      const coDuLieuHo = thonDaNopXa && (thon.tien_do?.da_duyet || 0) > 0
+      const coDuLieuThon = thonDaNopXa
 
       for (const ct of chiTieuDot) {
         if (daLapThon[thon.thon_id].has(ct)) continue

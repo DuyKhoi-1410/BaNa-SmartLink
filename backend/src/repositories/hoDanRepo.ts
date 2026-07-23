@@ -61,6 +61,17 @@ export async function demTheoThon(thonId) {
   return parseInt(result.rows[0].tong)
 }
 
+export async function demTheoTatCaThon() {
+  const result = await query(
+    `SELECT t.id AS thon_id, t.ten_thon, COUNT(hd.id)::int AS tong_ho
+     FROM thon t
+     LEFT JOIN ho_dan hd ON hd.thon_id = t.id AND hd.trang_thai = 'dang_cu_tru'
+     WHERE t.trang_thai = 'hoat_dong'
+     GROUP BY t.id, t.ten_thon ORDER BY t.ten_thon`
+  )
+  return result.rows
+}
+
 export async function layTatCa() {
   const result = await query(
     `SELECT hd.*, nd.ho_ten AS ho_ten_chu_ho, t.ten_thon
