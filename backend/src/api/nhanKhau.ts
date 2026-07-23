@@ -15,8 +15,10 @@ import {
 const router = Router()
 
 function layCtx(req: Request) {
+  const xff = req.headers['x-forwarded-for'] as string | undefined
+  const ip = xff ? xff.split(',')[0].trim() : req.socket.remoteAddress || null
   return {
-    ip: (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || null,
+    ip: ip && ip.length > 64 ? ip.slice(0, 64) : ip,
     userAgent: req.headers['user-agent'] || null,
   }
 }
