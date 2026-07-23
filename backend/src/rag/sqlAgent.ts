@@ -105,6 +105,13 @@ const BASE_RULES = `## Quy tắc QUAN TRỌNG:
 - CT13: Số người được hướng dẫn dịch vụ công trực tuyến (do thôn nhập)
 - CT14: Số vụ bạo lực gia đình (do thôn nhập)
 
+## Ví dụ SQL đúng:
+- "tổng hộ dân" → SELECT COUNT(*) AS tong_ho FROM ho_dan WHERE ho_dan.trang_thai = 'dang_cu_tru'
+- "tổng hộ dân theo thôn" → SELECT t.ten_thon, COUNT(hd.id) AS tong_ho FROM thon t LEFT JOIN ho_dan hd ON hd.thon_id = t.id AND hd.trang_thai = 'dang_cu_tru' WHERE t.trang_thai = 'hoat_dong' GROUP BY t.ten_thon ORDER BY t.ten_thon
+- "tổng nhân khẩu" → SELECT SUM(kk.ct02_tong_nhan_khau) AS tong_nhan_khau FROM ke_khai_ho kk WHERE kk.trang_thai = 'da_duyet' AND kk.dot_id = (SELECT id FROM dot_ke_khai WHERE trang_thai != 'huy' ORDER BY nam DESC, quy DESC LIMIT 1)
+- "hộ nghèo bao nhiêu" → SELECT SUM(kk.ct03_ho_ngheo) AS tong_ho_ngheo FROM ke_khai_ho kk WHERE kk.trang_thai = 'da_duyet' AND kk.dot_id = (SELECT id FROM dot_ke_khai WHERE trang_thai != 'huy' ORDER BY nam DESC, quy DESC LIMIT 1)
+- "danh sách hộ dân" → SELECT nd.ho_ten, t.ten_thon, nd.so_dien_thoai FROM ho_dan hd JOIN nguoi_dung nd ON hd.chu_ho_id = nd.id JOIN thon t ON hd.thon_id = t.id WHERE hd.trang_thai = 'dang_cu_tru' ORDER BY t.ten_thon, nd.ho_ten LIMIT 50
+
 ## Format trả về:
 Chỉ trả về câu SQL thuần, không có markdown, không có giải thích.`
 
@@ -197,6 +204,42 @@ function injectHoDanFilter(sql: string): string {
     return sql.slice(0, idx) + " WHERE ho_dan.trang_thai = 'dang_cu_tru'" + sql.slice(idx)
   }
   return sql
+}
+
+function matchCommonQuery(q: string, vaiTro: string, thonId?: number, hoDanId?: number, dotMoiNhatId?: number): string | null {
+  const lc = q.toLowerCase().replace(/[?？]/g, '').trim()
+  const thonFilter = vaiTro === 'thon' && thonId ? ` AND hd.thon_id = ${thonId}` : ''
+  const thonFilterDirect = vaiTro === 'thon' && thonId ? ` AND ho_dan.thon_id = ${thonId}` : ''
+  const dotFilter = dotMoiNhatId ? `kk.dot_id = ${dotMoiNhatId}` : `kk.dot_id = (SELECT id FROM dot_ke_khai WHERE trang_thai != 'huy' ORDER BY nam DESC, quy DESC LIMIT 1)`
+
+  if (/^(tong|tổng).*(ho dan|hộ dân|ho_dan)(?!.*(theo|thon|thôn|moi|mỗi))/.test(lc) || /^(bao nhieu|bao nhiêu).*(ho dan|hộ dân)/.test(lc) || /^(ho dan|hộ dân).*(bao nhieu|bao nhiêu|tong|tổng|may|mấy)/.test(lc)) {
+    return `SELECT COUNT(*) AS tong_ho_dan FROM ho_dan WHERE ho_dan.trang_thai = 'dang_cu_tru'${thonFilterDirect}`
+  }
+  if (/^(tong|tổng).*(ho dan|hộ dân|ho_dan).*(theo|thon|thôn|moi|mỗi)/.test(lc) || /ho dan.*(tung|từng|theo).*(thon|thôn)/.test(lc)) {
+    return `SELECT t.ten_thon, COUNT(hd.id) AS tong_ho FROM thon t LEFT JOIN ho_dan hd ON hd.thon_id = t.id AND hd.trang_thai = 'dang_cu_tru' WHERE t.trang_thai = 'hoat_dong' GROUP BY t.id, t.ten_thon ORDER BY t.ten_thon`
+  }
+  if (/^(tong|tổng).*(nhan khau|nhân khẩu|nhan_khau)/.test(lc) || /nhan khau.*(bao nhieu|tong|tổng)/.test(lc)) {
+    return `SELECT SUM(kk.ct02_tong_nhan_khau) AS tong_nhan_khau FROM ke_khai_ho kk JOIN ho_dan hd ON kk.ho_dan_id = hd.id AND hd.trang_thai = 'dang_cu_tru' WHERE kk.trang_thai = 'da_duyet' AND ${dotFilter}${thonFilter}`
+  }
+  if (/(ho ngheo|hộ nghèo|ho_ngheo).*(bao nhieu|bao nhiêu|tong|tổng|may|mấy)/.test(lc) || /^(tong|tổng|bao nhieu|bao nhiêu).*(ho ngheo|hộ nghèo)/.test(lc)) {
+    return `SELECT SUM(kk.ct03_ho_ngheo) AS tong_ho_ngheo FROM ke_khai_ho kk JOIN ho_dan hd ON kk.ho_dan_id = hd.id AND hd.trang_thai = 'dang_cu_tru' WHERE kk.trang_thai = 'da_duyet' AND ${dotFilter}${thonFilter}`
+  }
+  if (/(can ngheo|cận nghèo|can_ngheo).*(bao nhieu|bao nhiêu|tong|tổng|may|mấy)/.test(lc) || /^(tong|tổng|bao nhieu|bao nhiêu).*(can ngheo|cận nghèo)/.test(lc)) {
+    return `SELECT SUM(kk.ct04_ho_can_ngheo) AS tong_ho_can_ngheo FROM ke_khai_ho kk JOIN ho_dan hd ON kk.ho_dan_id = hd.id AND hd.trang_thai = 'dang_cu_tru' WHERE kk.trang_thai = 'da_duyet' AND ${dotFilter}${thonFilter}`
+  }
+  if (/(danh sach|danh sách).*(ho dan|hộ dân|ho_dan)/.test(lc)) {
+    return `SELECT nd.ho_ten, t.ten_thon, nd.so_dien_thoai FROM ho_dan hd JOIN nguoi_dung nd ON hd.chu_ho_id = nd.id JOIN thon t ON hd.thon_id = t.id WHERE hd.trang_thai = 'dang_cu_tru'${thonFilter.replace(/hd\./g, 'hd.')} ORDER BY t.ten_thon, nd.ho_ten LIMIT 50`
+  }
+  if (/(danh sach|danh sách).*(sdt|sđt|so dien thoai|số điện thoại|dien thoai|điện thoại)/.test(lc)) {
+    return `SELECT nd.ho_ten, nd.so_dien_thoai, t.ten_thon FROM ho_dan hd JOIN nguoi_dung nd ON hd.chu_ho_id = nd.id JOIN thon t ON hd.thon_id = t.id WHERE hd.trang_thai = 'dang_cu_tru'${thonFilter.replace(/hd\./g, 'hd.')} ORDER BY t.ten_thon, nd.ho_ten LIMIT 50`
+  }
+  if (/(bao luc|bạo lực).*(gia dinh|gia đình)/.test(lc)) {
+    return `SELECT SUM(kt.ct14_bao_luc_gia_dinh) AS tong_bao_luc FROM ke_khai_thon kt WHERE kt.trang_thai = 'da_nop_xa'${vaiTro === 'thon' && thonId ? ` AND kt.thon_id = ${thonId}` : ''}`
+  }
+  if (/(gia dinh van hoa|gia đình văn hóa|van hoa|văn hóa)/.test(lc)) {
+    return `SELECT SUM(kt.ct09_gia_dinh_van_hoa) AS tong_van_hoa FROM ke_khai_thon kt WHERE kt.trang_thai = 'da_nop_xa'${vaiTro === 'thon' && thonId ? ` AND kt.thon_id = ${thonId}` : ''}`
+  }
+  return null
 }
 
 export interface AskDataResult {
@@ -292,30 +335,37 @@ export async function askDataStream(
   const tongHop = await tongHopMoiNhat()
   const systemPrompt = buildSystemPrompt(vaiTro, thonId, hoDanId, dotMoiNhatId, tongHop)
 
-  let rawSql: string
-  try {
-    rawSql = await generate(`${systemPrompt}\n\n## Câu hỏi của ${roleLabel[vaiTro] || 'người dùng'}:\n${question}`)
-  } catch (err: any) {
-    console.error('[SQL Agent] Generate SQL error:', err.message)
-    res.write(`data: ${JSON.stringify({ token: 'Hệ thống AI đang tạm ngưng. Vui lòng thử lại sau ít phút.', done: true })}\n\n`)
-    res.end()
-    return
+  const commonSql = matchCommonQuery(question, vaiTro, thonId, hoDanId, dotMoiNhatId)
+  let finalSql: string
+
+  if (commonSql) {
+    console.log('[SQL Agent] matched common query:', commonSql.slice(0, 200))
+    finalSql = commonSql
+  } else {
+    let rawSql: string
+    try {
+      rawSql = await generate(`${systemPrompt}\n\n## Câu hỏi của ${roleLabel[vaiTro] || 'người dùng'}:\n${question}`)
+    } catch (err: any) {
+      console.error('[SQL Agent] Generate SQL error:', err.message)
+      res.write(`data: ${JSON.stringify({ token: 'Hệ thống AI đang tạm ngưng. Vui lòng thử lại sau ít phút.', done: true })}\n\n`)
+      res.end()
+      return
+    }
+    console.log('[SQL Agent] generated SQL:', rawSql.slice(0, 200))
+    finalSql = cleanSQL(rawSql)
   }
 
-  console.log('[SQL Agent] generated SQL:', rawSql.slice(0, 200))
-  const sql = cleanSQL(rawSql)
-
-  if (!sql || !isSafeSQL(sql)) {
+  if (!finalSql || !isSafeSQL(finalSql)) {
     res.write(`data: ${JSON.stringify({ token: 'Xin lỗi, tôi không thể tạo truy vấn phù hợp cho câu hỏi này. Bạn có thể diễn đạt lại không?' })}\n\n`)
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`)
     res.end()
     return
   }
 
-  if (!hasRequiredFilter(sql, vaiTro, thonId, hoDanId)) {
+  if (!hasRequiredFilter(finalSql, vaiTro, thonId, hoDanId)) {
     const fs = await import('fs')
-    fs.appendFileSync('rag_debug.log', `[${new Date().toISOString()}] BLOCKED SQL: ${sql}\n`)
-    console.warn('SQL missing required filter:', { vaiTro, thonId, hoDanId, sql })
+    fs.appendFileSync('rag_debug.log', `[${new Date().toISOString()}] BLOCKED SQL: ${finalSql}\n`)
+    console.warn('SQL missing required filter:', { vaiTro, thonId, hoDanId, sql: finalSql })
     res.write(`data: ${JSON.stringify({ token: 'Xin lỗi, tôi không thể truy vấn dữ liệu ngoài phạm vi quyền hạn của bạn.' })}\n\n`)
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`)
     res.end()
@@ -323,7 +373,6 @@ export async function askDataStream(
   }
 
   let rows: any[]
-  let finalSql = sql
   try {
     const result = await query(finalSql)
     rows = result.rows
