@@ -46,7 +46,16 @@ export async function askStream(
 
   const lsChuoi = buildLichSu(lichSu)
 
-  const total = await countChunks()
+  let total: number
+  try {
+    total = await countChunks()
+  } catch (err: any) {
+    console.error('[RAG pipeline] DB error:', err.message)
+    res.write(`data: ${JSON.stringify({ token: 'Không thể kết nối cơ sở dữ liệu. Vui lòng thử lại sau.', done: true, sources: [] })}\n\n`)
+    res.end()
+    return
+  }
+
   if (total === 0) {
     res.write(`data: ${JSON.stringify({ token: 'Hệ thống chưa được nạp tài liệu hướng dẫn. Vui lòng liên hệ cán bộ xã để được hỗ trợ.' })}\n\n`)
     res.write(`data: ${JSON.stringify({ done: true, sources: [] })}\n\n`)
@@ -54,7 +63,16 @@ export async function askStream(
     return
   }
 
-  const queryEmbedding = await embedOne(question)
+  let queryEmbedding: number[]
+  try {
+    queryEmbedding = await embedOne(question)
+  } catch (err: any) {
+    console.error('[RAG pipeline] Embedding error:', err.message)
+    res.write(`data: ${JSON.stringify({ token: 'Hệ thống AI đang tạm ngưng. Vui lòng thử lại sau ít phút.', done: true, sources: [] })}\n\n`)
+    res.end()
+    return
+  }
+
   const results = await searchChunks(queryEmbedding, vaiTro, TOP_K)
   const filtered = results.filter(r => r.similarity >= MIN_SIMILARITY)
   const coTaiLieu = filtered.length > 0
@@ -80,7 +98,15 @@ export async function askStream(
     similarity: Math.round(r.similarity * 1000) / 1000,
   }))
 
-  const stream = await generateStream(prompt)
+  let stream: NodeJS.ReadableStream
+  try {
+    stream = await generateStream(prompt)
+  } catch (err: any) {
+    console.error('[RAG pipeline] Generate stream error:', err.message)
+    res.write(`data: ${JSON.stringify({ token: 'Hệ thống AI đang tạm ngưng. Vui lòng thử lại sau ít phút.', done: true, sources })}\n\n`)
+    res.end()
+    return
+  }
 
   let buffer = ''
   stream.on('data', (chunk: Buffer) => {

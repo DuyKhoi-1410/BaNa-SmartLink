@@ -86,6 +86,8 @@ const BASE_RULES = `## Quy tắc QUAN TRỌNG:
 8. ct03_ho_ngheo và ct04_ho_can_ngheo là 0 hoặc 1 (boolean), SUM để đếm tổng hộ nghèo/cận nghèo.
 9. KHÔNG lọc theo ke_khai_ho.trang_thai trừ khi câu hỏi nêu rõ. Dữ liệu đã kê khai gồm nhiều trạng thái ('da_ke_khai','da_duyet','giu_nguyen'); nếu tự thêm điều kiện trang_thai='da_ke_khai' sẽ bỏ sót dữ liệu.
 10. Trả về TỐI ĐA 50 dòng (LIMIT 50).
+11. Dữ liệu ho_ten trong bảng nguoi_dung được lưu KHÔNG DẤU (VD: "Le Van An", không phải "Lê Văn An"). Khi tìm theo tên, LUÔN dùng ILIKE với % để tìm gần đúng. VD: WHERE LOWER(nguoi_dung.ho_ten) ILIKE '%le van an%'. KHÔNG BAO GIỜ dùng dấu tiếng Việt trong điều kiện tìm tên.
+12. MỘT HỘ CÓ THỂ CÓ NHIỀU BẢN KÊ KHAI (phien_ban 1, 2, 3...) trong cùng 1 đợt (khi bị trả lại và kê khai lại). Khi tính SUM/COUNT các chỉ tiêu (ct02-ct11) trên ke_khai_ho, LUÔN lọc ke_khai_ho.trang_thai = 'da_duyet' để chỉ lấy bản đã được xã duyệt. Bản bị trả lại ('tra_lai') hoặc chưa duyệt KHÔNG được tính vào số liệu tổng hợp. Nếu KHÔNG lọc sẽ đếm trùng dữ liệu.
 
 ## Ý nghĩa các chỉ tiêu:
 - CT02: Tổng nhân khẩu trong hộ
@@ -105,7 +107,7 @@ const BASE_RULES = `## Quy tắc QUAN TRỌNG:
 ## Format trả về:
 Chỉ trả về câu SQL thuần, không có markdown, không có giải thích.`
 
-function buildSystemPrompt(vaiTro: string, thonId?: number, hoDanId?: number): string {
+function buildSystemPrompt(vaiTro: string, thonId?: number, hoDanId?: number, dotMoiNhatId?: number, tongHop?: any[]): string {
   const roleLabel: Record<string, string> = { xa: 'cán bộ xã', thon: 'cán bộ thôn', dan: 'người dân' }
   let prompt = `Bạn là trợ lý SQL cho hệ thống Ba Na SmartLink - hệ thống kê khai dữ liệu Văn hóa - Xã hội cấp xã.
 Nhiệm vụ: Chuyển câu hỏi tiếng Việt của ${roleLabel[vaiTro] || 'người dùng'} thành câu truy vấn SQL PostgreSQL.
@@ -134,6 +136,28 @@ Người hỏi là người dân, hộ dân có ho_dan.id = ${hoDanId}. BẮT BU
 - Nếu query bảng ke_khai_ho: PHẢI có WHERE ke_khai_ho.ho_dan_id = ${hoDanId}
 - Nếu query bảng ho_dan: PHẢI có WHERE ho_dan.id = ${hoDanId}
 - KHÔNG BAO GIỜ trả dữ liệu của hộ dân khác.`
+  }
+
+  if (dotMoiNhatId != null) {
+    prompt += `
+
+## ĐỢT MỚI NHẤT CÓ DỮ LIỆU:
+Đợt kê khai mới nhất có dữ liệu thực tế là dot_id = ${dotMoiNhatId}. Khi không chỉ định đợt cụ thể, LUÔN dùng dot_id = ${dotMoiNhatId} thay vì subquery.`
+  }
+
+  if (tongHop && tongHop.length > 0) {
+    const filtered = vaiTro === 'thon' && thonId != null
+      ? tongHop.filter((t: any) => t.thon_id === thonId)
+      : tongHop
+    if (filtered.length > 0) {
+      prompt += `
+
+## DỮ LIỆU TỔNG HỢP MỚI NHẤT (đã gộp từ nhiều đợt — NGUỒN CHÍNH XÁC NHẤT):
+Dữ liệu bên dưới là tổng hợp chính xác nhất từ hệ thống (cùng nguồn với Dashboard).
+**BẮT BUỘC**: Khi câu hỏi liên quan đến CT09 (gia đình văn hóa), CT12 (tổ CNSCĐ), CT13 (DVC trực tuyến), CT14 (bạo lực gia đình), hoặc bất kỳ số liệu tổng hợp nào có trong dữ liệu này — PHẢI lấy giá trị từ đây. Tạo SQL dạng: SELECT <giá trị> AS ket_qua
+Các field: ct09_gia_dinh_van_hoa, ct12_thanh_vien_to_cnsc, ct13_huong_dan_dvc, ct14_bao_luc_gia_dinh, ct01_tong_ho, ct02_tong_nhan_khau, ct03_ho_ngheo, ct04_ho_can_ngheo, ct05_nguoi_co_cong, ct06_bao_tro_xh, ct07_tre_duoi_16, ct08_tre_hoan_canh, ct10_tuoi_lao_dong, ct11_tham_gia_bhyt.
+${JSON.stringify(filtered)}`
+    }
   }
 
   return prompt
@@ -183,9 +207,13 @@ ${JSON.stringify(rows, null, 2)}
 ## Trả lời:`
 }
 
+const REAL_TABLES = ['HO_DAN', 'NGUOI_DUNG', 'THON', 'KE_KHAI_HO', 'KE_KHAI_THON', 'DOT_KE_KHAI']
+
 function hasRequiredFilter(sql: string, vaiTro: string, thonId?: number, hoDanId?: number): boolean {
   if (vaiTro === 'xa') return true
   const upper = sql.toUpperCase().replace(/\s+/g, ' ')
+  const queriesToRealTable = REAL_TABLES.some(t => upper.includes(t))
+  if (!queriesToRealTable) return true
   if (vaiTro === 'thon' && thonId != null) {
     return upper.includes(`THON_ID = ${thonId}`)
   }
@@ -232,8 +260,31 @@ export async function askDataStream(
 
   const roleLabel: Record<string, string> = { xa: 'cán bộ xã', thon: 'cán bộ thôn', dan: 'người dân' }
   console.log('[SQL Agent]', { question, vaiTro, userId, thonId, hoDanId })
-  const systemPrompt = buildSystemPrompt(vaiTro, thonId, hoDanId)
-  const rawSql = await generate(`${systemPrompt}\n\n## Câu hỏi của ${roleLabel[vaiTro] || 'người dùng'}:\n${question}`)
+
+  const dotResult = await query(`SELECT id FROM dot_ke_khai WHERE trang_thai != 'huy' ORDER BY nam DESC, quy DESC`)
+  let dotMoiNhatId: number | undefined
+  for (const dot of dotResult.rows) {
+    const check = await query(
+      `SELECT 1 FROM ke_khai_ho WHERE dot_id = $1 UNION ALL SELECT 1 FROM ke_khai_thon WHERE dot_id = $1 LIMIT 1`,
+      [dot.id]
+    )
+    if (check.rows.length > 0) { dotMoiNhatId = dot.id; break }
+  }
+
+  const { tongHopMoiNhat } = await import('../services/keKhaiService.js')
+  const tongHop = await tongHopMoiNhat()
+  const systemPrompt = buildSystemPrompt(vaiTro, thonId, hoDanId, dotMoiNhatId, tongHop)
+
+  let rawSql: string
+  try {
+    rawSql = await generate(`${systemPrompt}\n\n## Câu hỏi của ${roleLabel[vaiTro] || 'người dùng'}:\n${question}`)
+  } catch (err: any) {
+    console.error('[SQL Agent] Generate SQL error:', err.message)
+    res.write(`data: ${JSON.stringify({ token: 'Hệ thống AI đang tạm ngưng. Vui lòng thử lại sau ít phút.', done: true })}\n\n`)
+    res.end()
+    return
+  }
+
   console.log('[SQL Agent] generated SQL:', rawSql.slice(0, 200))
   const sql = cleanSQL(rawSql)
 
@@ -245,6 +296,8 @@ export async function askDataStream(
   }
 
   if (!hasRequiredFilter(sql, vaiTro, thonId, hoDanId)) {
+    const fs = await import('fs')
+    fs.appendFileSync('rag_debug.log', `[${new Date().toISOString()}] BLOCKED SQL: ${sql}\n`)
     console.warn('SQL missing required filter:', { vaiTro, thonId, hoDanId, sql })
     res.write(`data: ${JSON.stringify({ token: 'Xin lỗi, tôi không thể truy vấn dữ liệu ngoài phạm vi quyền hạn của bạn.' })}\n\n`)
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`)
@@ -272,7 +325,16 @@ export async function askDataStream(
   }
 
   const prompt = buildSummarizePrompt(question, rows, lsChuoi, vaiTro)
-  const stream = await generateStream(prompt)
+
+  let stream: NodeJS.ReadableStream
+  try {
+    stream = await generateStream(prompt)
+  } catch (err: any) {
+    console.error('[SQL Agent] Generate stream error:', err.message)
+    res.write(`data: ${JSON.stringify({ token: 'Hệ thống AI đang tạm ngưng. Vui lòng thử lại sau ít phút.', done: true, sql, data: rows })}\n\n`)
+    res.end()
+    return
+  }
 
   let buffer = ''
   stream.on('data', (chunk: Buffer) => {

@@ -75,6 +75,18 @@ export default function ChatBot() {
       thoiGian: new Date(),
     }])
 
+    const slowTimer = setTimeout(() => {
+      setTinNhan(prev => {
+        const bot = prev.find(t => t.id === botId)
+        if (bot && !bot.noiDung) {
+          return prev.map(t =>
+            t.id === botId ? { ...t, noiDung: 'Hệ thống đang xử lý, vui lòng chờ...\n\n' } : t
+          )
+        }
+        return prev
+      })
+    }, 180_000)
+
     try {
       const token = tokenStore.getAccess()
       const res = await fetch(`${API_BASE}/rag/ask`, {
@@ -131,10 +143,17 @@ export default function ChatBot() {
       })
     } catch (err: any) {
       console.error('Chatbot error:', err)
-      setTinNhan(prev => prev.map(t =>
-        t.id === botId ? { ...t, noiDung: 'Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại sau.' } : t
-      ))
+      setTinNhan(prev => {
+        const bot = prev.find(t => t.id === botId)
+        if (bot && !bot.noiDung) {
+          return prev.map(t =>
+            t.id === botId ? { ...t, noiDung: 'Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại sau.' } : t
+          )
+        }
+        return prev
+      })
     } finally {
+      clearTimeout(slowTimer)
       setDangXuLy(false)
     }
   }
