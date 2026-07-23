@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+.env.local
+.env.production
+*.log
+rag_debug.log
+uploads
+backup_tai_lieu_chunks.json
+Dockerfile
+.dockerignore

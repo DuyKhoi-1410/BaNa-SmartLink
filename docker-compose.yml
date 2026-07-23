@@ -1,0 +1,36 @@
+# BaNa-SmartLink — deploy 2 service. Chi FE lo cong 3000 ra ngoai.
+# Moi service tu doc bien env tu file .env cua chinh no (backend/.env).
+# FE khong dung env_file: Vite nhung bien luc BUILD, nen dung build arg co dinh /api/v1.
+
+services:
+  backend:
+    build:
+      context: ./backend
+    env_file:
+      - ./backend/.env
+    environment:
+      PORT: 3636
+    volumes:
+      # Giu file upload (minh chung/avatar) qua cac lan rebuild
+      - uploads_data:/app/uploads
+    expose:
+      - "3636"          # chi mo trong mang noi bo, khong publish ra host
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3636/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "3000:80"       # FE ra ngoai o cong 3000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  uploads_data:
