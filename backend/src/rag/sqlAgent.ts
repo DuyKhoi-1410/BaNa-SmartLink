@@ -77,10 +77,11 @@ CREATE TABLE ke_khai_thon (
 
 const BASE_RULES = `## Quy tắc QUAN TRỌNG:
 1. CHỈ tạo câu SELECT. KHÔNG BAO GIỜ dùng INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE.
+1b. CHỈ được dùng ĐÚNG 6 bảng trong schema: thon, nguoi_dung, ho_dan, dot_ke_khai, ke_khai_ho, ke_khai_thon. KHÔNG BAO GIỜ tự bịa tên bảng khác (VD: ho_gia_dinh, nhan_khau, cu_dan... đều SAI). "Hộ dân" = bảng ho_dan. "Tổng hộ dân" = COUNT từ ho_dan.
 2. Luôn JOIN đúng quan hệ: ho_dan.thon_id = thon.id, ke_khai_ho.ho_dan_id = ho_dan.id, ke_khai_ho.dot_id = dot_ke_khai.id
 3. Khi hỏi theo thôn, JOIN với bảng thon qua thon_id.
 4. Khi tính tổng/trung bình, dùng SUM/AVG/COUNT với GROUP BY phù hợp.
-5. Chỉ lấy hộ đang cư trú: ho_dan.trang_thai = 'dang_cu_tru'
+5. LUÔN LUÔN lọc ho_dan.trang_thai = 'dang_cu_tru' khi truy vấn bảng ho_dan (kể cả COUNT, SUM, JOIN). Hộ 'da_roi' KHÔNG được tính.
 6. Chỉ lấy đợt đang mở hoặc đã đóng (không lấy đợt 'huy'): dot_ke_khai.trang_thai != 'huy'
 7. Khi hỏi "đợt mới nhất" hoặc không chỉ định đợt, dùng subquery: dot_id = (SELECT id FROM dot_ke_khai WHERE trang_thai != 'huy' ORDER BY nam DESC, quy DESC LIMIT 1). KHÔNG dùng ORDER BY + LIMIT trên query chính khi có SUM/COUNT.
 8. ct03_ho_ngheo và ct04_ho_can_ngheo là 0 hoặc 1 (boolean), SUM để đếm tổng hộ nghèo/cận nghèo.
@@ -179,6 +180,22 @@ function cleanSQL(raw: string): string {
   else if (sql.startsWith('```')) sql = sql.slice(3)
   if (sql.endsWith('```')) sql = sql.slice(0, -3)
   sql = sql.trim().replace(/;+$/, '').trim()
+  sql = injectHoDanFilter(sql)
+  return sql
+}
+
+function injectHoDanFilter(sql: string): string {
+  const upper = sql.toUpperCase()
+  if (!upper.includes('HO_DAN')) return sql
+  if (upper.includes("DANG_CU_TRU")) return sql
+  if (/\bWHERE\b/i.test(sql)) {
+    return sql.replace(/\bWHERE\b/i, "WHERE ho_dan.trang_thai = 'dang_cu_tru' AND")
+  }
+  const fromMatch = sql.match(/\bFROM\s+ho_dan\b/i)
+  if (fromMatch) {
+    const idx = fromMatch.index! + fromMatch[0].length
+    return sql.slice(0, idx) + " WHERE ho_dan.trang_thai = 'dang_cu_tru'" + sql.slice(idx)
+  }
   return sql
 }
 
@@ -306,20 +323,36 @@ export async function askDataStream(
   }
 
   let rows: any[]
+  let finalSql = sql
   try {
-    const result = await query(sql)
+    const result = await query(finalSql)
     rows = result.rows
   } catch (err: any) {
-    console.error('SQL execution error:', err.message, '\nSQL:', sql)
-    res.write(`data: ${JSON.stringify({ token: 'Xin lỗi, truy vấn dữ liệu gặp lỗi. Bạn có thể diễn đạt câu hỏi khác được không?' })}\n\n`)
-    res.write(`data: ${JSON.stringify({ done: true, sql })}\n\n`)
-    res.end()
-    return
+    console.error('SQL execution error (attempt 1):', err.message, '\nSQL:', finalSql)
+    try {
+      const retryPrompt = `${systemPrompt}\n\n## Câu hỏi: ${question}\n\n## SQL trước đó bị lỗi:\n${finalSql}\n\n## Lỗi:\n${err.message}\n\nHãy sửa lại câu SQL cho đúng. CHỈ dùng tên bảng/cột CHÍNH XÁC trong schema.`
+      const retryRaw = await generate(retryPrompt)
+      const retrySql = cleanSQL(retryRaw)
+      if (retrySql && isSafeSQL(retrySql) && hasRequiredFilter(retrySql, vaiTro, thonId, hoDanId)) {
+        console.log('[SQL Agent] retry SQL:', retrySql.slice(0, 200))
+        const retryResult = await query(retrySql)
+        rows = retryResult.rows
+        finalSql = retrySql
+      } else {
+        throw new Error('Retry SQL invalid')
+      }
+    } catch (retryErr: any) {
+      console.error('SQL execution error (attempt 2):', retryErr.message)
+      res.write(`data: ${JSON.stringify({ token: 'Xin lỗi, truy vấn dữ liệu gặp lỗi. Bạn có thể diễn đạt câu hỏi khác được không?' })}\n\n`)
+      res.write(`data: ${JSON.stringify({ done: true, sql: finalSql })}\n\n`)
+      res.end()
+      return
+    }
   }
 
   if (rows.length === 0) {
     res.write(`data: ${JSON.stringify({ token: 'Không tìm thấy dữ liệu phù hợp với câu hỏi của bạn. Có thể chưa có dữ liệu kê khai cho tiêu chí này.' })}\n\n`)
-    res.write(`data: ${JSON.stringify({ done: true, sql, data: [] })}\n\n`)
+    res.write(`data: ${JSON.stringify({ done: true, sql: finalSql, data: [] })}\n\n`)
     res.end()
     return
   }
@@ -331,7 +364,7 @@ export async function askDataStream(
     stream = await generateStream(prompt)
   } catch (err: any) {
     console.error('[SQL Agent] Generate stream error:', err.message)
-    res.write(`data: ${JSON.stringify({ token: 'Hệ thống AI đang tạm ngưng. Vui lòng thử lại sau ít phút.', done: true, sql, data: rows })}\n\n`)
+    res.write(`data: ${JSON.stringify({ token: 'Hệ thống AI đang tạm ngưng. Vui lòng thử lại sau ít phút.', done: true, sql: finalSql, data: rows })}\n\n`)
     res.end()
     return
   }
@@ -349,7 +382,7 @@ export async function askDataStream(
           res.write(`data: ${JSON.stringify({ token: json.response })}\n\n`)
         }
         if (json.done) {
-          res.write(`data: ${JSON.stringify({ done: true, sql, data: rows })}\n\n`)
+          res.write(`data: ${JSON.stringify({ done: true, sql: finalSql, data: rows })}\n\n`)
           res.end()
         }
       } catch {}
@@ -358,7 +391,7 @@ export async function askDataStream(
 
   stream.on('end', () => {
     if (!res.writableEnded) {
-      res.write(`data: ${JSON.stringify({ done: true, sql, data: rows })}\n\n`)
+      res.write(`data: ${JSON.stringify({ done: true, sql: finalSql, data: rows })}\n\n`)
       res.end()
     }
   })
