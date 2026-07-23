@@ -3,6 +3,17 @@ import { query } from '../repositories/db.js'
 import { generate, generateStream } from './ollama.js'
 import type { Response as ExpressRes } from 'express'
 
+function detectRepeat(text: string): boolean {
+  if (text.length < 80) return false
+  const len = text.length
+  for (let patLen = 30; patLen <= Math.min(200, len / 2); patLen++) {
+    const tail = text.slice(len - patLen)
+    const prev = text.slice(len - patLen * 2, len - patLen)
+    if (tail === prev) return true
+  }
+  return false
+}
+
 const DB_SCHEMA = `
 -- Bảng thôn
 CREATE TABLE thon (
@@ -419,18 +430,30 @@ export async function askDataStream(
   }
 
   let buffer = ''
+  let fullText = ''
+  let stopped = false
   stream.on('data', (chunk: Buffer) => {
+    if (stopped) return
     buffer += chunk.toString()
     const lines = buffer.split('\n')
     buffer = lines.pop() || ''
     for (const line of lines) {
-      if (!line.trim()) continue
+      if (!line.trim() || stopped) continue
       try {
         const json = JSON.parse(line)
         if (json.response) {
+          fullText += json.response
+          if (detectRepeat(fullText)) {
+            console.warn('[SQL Agent] Detected repetition, stopping stream')
+            stopped = true
+            res.write(`data: ${JSON.stringify({ done: true, sql: finalSql, data: rows })}\n\n`)
+            res.end()
+            return
+          }
           res.write(`data: ${JSON.stringify({ token: json.response })}\n\n`)
         }
         if (json.done) {
+          stopped = true
           res.write(`data: ${JSON.stringify({ done: true, sql: finalSql, data: rows })}\n\n`)
           res.end()
         }

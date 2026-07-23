@@ -55,7 +55,7 @@ export async function generate(prompt: string): Promise<string> {
     prompt,
     stream: false,
     think: false,
-    options: { temperature: GENERATION_TEMPERATURE, repeat_penalty: 1.3, num_predict: 1024 },
+    options: { temperature: GENERATION_TEMPERATURE, repeat_penalty: 1.5, num_predict: 2048 },
   }, 120_000)
   return (data.response ?? '').trim()
 }
@@ -74,7 +74,7 @@ export async function generateStream(prompt: string): Promise<NodeJS.ReadableStr
       prompt,
       stream: true,
       think: false,
-      options: { temperature: GENERATION_TEMPERATURE, repeat_penalty: 1.3, num_predict: 1024 },
+      options: { temperature: GENERATION_TEMPERATURE, repeat_penalty: 1.5, num_predict: 2048 },
     })
 
     const hdrs: Record<string, string> = {

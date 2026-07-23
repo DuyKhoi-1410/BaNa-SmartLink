@@ -4,6 +4,17 @@ import { searchChunks, countChunks } from './vectorStore.js'
 import { TOP_K, MIN_SIMILARITY } from './config.js'
 import type { Response as ExpressRes } from 'express'
 
+function detectRepeat(text: string): boolean {
+  if (text.length < 80) return false
+  const len = text.length
+  for (let patLen = 30; patLen <= Math.min(200, len / 2); patLen++) {
+    const tail = text.slice(len - patLen)
+    const prev = text.slice(len - patLen * 2, len - patLen)
+    if (tail === prev) return true
+  }
+  return false
+}
+
 const KHONG_TIM_THAY =
   'Xin lỗi, tôi không tìm thấy thông tin liên quan trong tài liệu. Bạn có thể liên hệ cán bộ Thôn hoặc Tổ Công nghệ số cộng đồng để được hỗ trợ trực tiếp.'
 
@@ -109,18 +120,30 @@ export async function askStream(
   }
 
   let buffer = ''
+  let fullText = ''
+  let stopped = false
   stream.on('data', (chunk: Buffer) => {
+    if (stopped) return
     buffer += chunk.toString()
     const lines = buffer.split('\n')
     buffer = lines.pop() || ''
     for (const line of lines) {
-      if (!line.trim()) continue
+      if (!line.trim() || stopped) continue
       try {
         const json = JSON.parse(line)
         if (json.response) {
+          fullText += json.response
+          if (detectRepeat(fullText)) {
+            console.warn('[RAG pipeline] Detected repetition, stopping stream')
+            stopped = true
+            res.write(`data: ${JSON.stringify({ done: true, sources })}\n\n`)
+            res.end()
+            return
+          }
           res.write(`data: ${JSON.stringify({ token: json.response })}\n\n`)
         }
         if (json.done) {
+          stopped = true
           res.write(`data: ${JSON.stringify({ done: true, sources })}\n\n`)
           res.end()
         }
